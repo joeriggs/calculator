@@ -31,7 +31,7 @@
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
 
-#define BCD_DBG_PRINT_FLAGS (BCD_DBG_OP_ADD | BCD_DBG_TO_STR)
+#define BCD_DBG_PRINT_FLAGS (BCD_DBG_OP_DIV | BCD_DBG_TO_STR)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
 
 /******************************************************************************
@@ -1468,7 +1468,7 @@ bcd_op_div(bcd *op1,
           {
             significand_t one;
             if(bcd_sig_initialize(&one) != true)  break;
-            if(bcd_sig_set_digit(&one, (BCD_NUM_DIGITS - 1), 0x1) != true) break;
+            if(bcd_sig_set_digit(&one, (BCD_NUM_DIGITS_INTERNAL - 1), 0x1) != true) break;
             if(bcd_tens_complement(&one, &value_tens)                                        == false) break;
             if(bcd_significand_add(&dividend_hi, &value_tens, &dividend_hi, NULL, &overflow) == false) break;
           }
@@ -1483,20 +1483,20 @@ bcd_op_div(bcd *op1,
         }
 
         uint8_t c;
-        if((c = bcd_sig_get_digit(&divisor_hi, (BCD_NUM_DIGITS - 1))) == 0xF) break;
+        if((c = bcd_sig_get_digit(&divisor_hi, (BCD_NUM_DIGITS_INTERNAL - 1))) == 0xF) break;
         if(bcd_shift_significand(&divisor_hi,       1) == false) break;
         if(bcd_shift_significand(&divisor_lo,       1) == false) break;
         if(bcd_sig_set_digit(&divisor_lo, 0, c) == false) break;
 
-        if((c = bcd_sig_get_digit(&add_one_hi, (BCD_NUM_DIGITS - 1))) == 0xF) break;
+        if((c = bcd_sig_get_digit(&add_one_hi, (BCD_NUM_DIGITS_INTERNAL - 1))) == 0xF) break;
         if(bcd_shift_significand(&add_one_hi, 1) == false) break;
         if(bcd_shift_significand(&add_one_lo, 1) == false) break;
         if(bcd_sig_set_digit(&add_one_lo, 0, c) == false) break;
 
-        c = bcd_sig_get_digit(&mask_hi, (BCD_NUM_DIGITS - 1));
+        c = bcd_sig_get_digit(&mask_hi, (BCD_NUM_DIGITS_INTERNAL - 1));
         if(bcd_shift_significand(&mask_hi, 1) == false) break;
         if(bcd_sig_set_digit(&mask_hi, 0, 0xF) == false) break;
-        if(bcd_sig_get_digit(&mask_lo, (BCD_NUM_DIGITS - 1)) == 0xF) { done = true; }
+        if(bcd_sig_get_digit(&mask_lo, (BCD_NUM_DIGITS_INTERNAL - 1)) == 0xF) { done = true; }
         if(bcd_shift_significand(&mask_lo, 1) == false) break;
         if(bcd_sig_set_digit(&mask_lo, 0, c) == false) break;
       }
@@ -1513,7 +1513,7 @@ bcd_op_div(bcd *op1,
         {
           char c;
           if(bcd_shift_significand(&op1->significand, -1) != true)                   { shift_ok = false; break; }
-          if((c = bcd_sig_get_digit(&result_lo, 0)) == 0xF)                           { shift_ok = false; break; }
+          if((c = bcd_sig_get_digit(&result_lo, 0)) == 0xF)                          { shift_ok = false; break; }
           if(bcd_sig_set_digit(&op1->significand, (BCD_NUM_DIGITS - 1), c) == false) { shift_ok = false; break; }
           if(bcd_shift_significand(&result_lo, -1) != true)                          { shift_ok = false; break; }
           op1->exponent--;
@@ -1532,7 +1532,7 @@ bcd_op_div(bcd *op1,
       {
         bcd *round;
         if((round = bcd_new()) == (bcd *) NULL) break;
-        if(bcd_sig_set_digit(&round->significand, (BCD_NUM_DIGITS - 1), 1) == false) break;
+        if(bcd_sig_set_digit(&round->significand, (BCD_NUM_DIGITS_INTERNAL - 1), 1) == false) break;
         round->sign = op1->sign;
         round->exponent = op1->exponent;
         if(bcd_op_add(op1, round) == false) break;
@@ -2320,6 +2320,8 @@ bcd_test(void)
     { "BCD_DIV_14", bcd_op_div,                "2"                 ,                "1.414213562373095" ,                     "1.414213562373095"     }, // Square root of 2.
     { "BCD_DIV_15", bcd_op_div, "9999999999999999"                 , "7777777777777777"                 ,                     "1.285714285714286"     }, // 16 / 16 = 16 digits.
     { "BCD_DIV_16", bcd_op_div,                "3"                 , "1834944619757441"                 ,                     "1.634926726233605e-15" }, // Bug.
+
+    { "BCD_EXP_01", bcd_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
   };
   size_t bcd_math_test_size = (sizeof(math_tests) / sizeof(bcd_math_test));
 

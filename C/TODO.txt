@@ -4,6 +4,7 @@
 - Basic implementation:
 
 - Bugs:
+  - Division bug (BCD_DIV_04).
   - Exponentiation is broken due to:
     - Rounding problems.
   - Switching between BCD and HEX is broken.
