@@ -31,7 +31,7 @@
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
 
-#define BCD_DBG_PRINT_FLAGS (BCD_DBG_OP_DIV | BCD_DBG_TO_STR)
+#define BCD_DBG_PRINT_FLAGS (BCD_DBG_STR_TO_DECIMAL | BCD_DBG_TO_STR)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
 
 /******************************************************************************
@@ -1771,18 +1771,25 @@ bcd_to_str(bcd  *this,
       if((val = bcd_new()) == (bcd *) 0)                                              { break; }
       if(bcd_copy(this, val) == false)                                                { break; }
 
+      /* This is the first digit after the set of digits that we'll place in
+       * the string.  We'll use this to determine if we need to round up. */
+      uint8_t carry_digit = bcd_sig_get_digit(&val->significand, BCD_NUM_DIGITS);
+
+      /* Clear the digits that we won't display.  We want the BCD number to be
+       * clear of unwanted digits. */
+      int i;
+      for(i = BCD_NUM_DIGITS; i < BCD_NUM_DIGITS_INTERNAL; i++)
+      {
+        if(bcd_sig_set_digit(&val->significand, i, 0) == false)                       { break; }
+      }
+
       /* If we need to round up, do it here. */
-      if(bcd_sig_get_digit(&val->significand, BCD_NUM_DIGITS) >= 5)
+      if(carry_digit >= 5)
       {
         if((one = bcd_new()) == (bcd *) 0)                                            { break; }
         {
           if(bcd_import(one, 1) == false)                                             { break; }
           if(bcd_shift_significand(&one->significand, (BCD_NUM_DIGITS - 1)) == false) { break; }
-          int i;
-          for(i = BCD_NUM_DIGITS; i < BCD_NUM_DIGITS_INTERNAL; i++)
-          {
-            if(bcd_sig_set_digit(&val->significand, i, 0) == false)                   { break; }
-          }
           one->sign     = val->sign;
           one->exponent = val->exponent;
           if(bcd_op_add(val, one) == false)                                           { break; }
