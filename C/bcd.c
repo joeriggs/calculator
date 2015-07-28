@@ -31,7 +31,7 @@
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
 
-#define BCD_DBG_PRINT_FLAGS (BCD_DBG_STR_TO_DECIMAL | BCD_DBG_TO_STR)
+#define BCD_DBG_PRINT_FLAGS (BCD_DBG_OP_DIV | BCD_DBG_STR_TO_DECIMAL | BCD_DBG_TO_STR)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
 
 /******************************************************************************
@@ -1512,14 +1512,15 @@ bcd_op_div(bcd *op1,
         while((bcd_sig_is_zero(&op1->significand) == false) && ((bcd_sig_get_digit(&op1->significand, 0)) == 0))
         {
           char c;
-          if(bcd_shift_significand(&op1->significand, -1) != true)                   { shift_ok = false; break; }
-          if((c = bcd_sig_get_digit(&result_lo, 0)) == 0xF)                          { shift_ok = false; break; }
-          if(bcd_sig_set_digit(&op1->significand, (BCD_NUM_DIGITS - 1), c) == false) { shift_ok = false; break; }
-          if(bcd_shift_significand(&result_lo, -1) != true)                          { shift_ok = false; break; }
+          if(bcd_shift_significand(&op1->significand, -1) != true)                            { shift_ok = false; break; }
+          if((c = bcd_sig_get_digit(&result_lo, 0)) == 0xF)                                   { shift_ok = false; break; }
+          if(bcd_sig_set_digit(&op1->significand, (BCD_NUM_DIGITS_INTERNAL - 1), c) == false) { shift_ok = false; break; }
+          if(bcd_shift_significand(&result_lo, -1) != true)                                   { shift_ok = false; break; }
           op1->exponent--;
         }
         if(shift_ok == false) break;
       }
+      BCD_PRINT(BCD_DBG_OP_DIV, "%s() SHIFT: %s\n", __func__, bcd_sig_to_str(&op1->significand));
 
       /* Set the sign. */
       op1->sign = (op1->sign == op2->sign) ? false : true;
