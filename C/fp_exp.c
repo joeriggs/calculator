@@ -270,40 +270,46 @@ fp_exp_nth_root_guess(fp_exp *this,
 {
   bool retcode = false;
 
-  bcd *A         = (bcd *) 0;
-  bcd *n_f       = (bcd *) 0;
-  bcd *X_k       = (bcd *) 0;
-  bcd *part1     = (bcd *) 0;
-  bcd *part2     = (bcd *) 0;
-  bcd *part3     = (bcd *) 0;
-  bcd *part4     = (bcd *) 0;
-  bcd *delta_X_k = (bcd *) 0;
-  bcd *zero      = (bcd *) 0;
+  bcd *A              = (bcd *) 0;
+  bcd *n_f            = (bcd *) 0;
+  bcd *X_k            = (bcd *) 0;
+  bcd *part1          = (bcd *) 0;
+  bcd *part2          = (bcd *) 0;
+  bcd *part3          = (bcd *) 0;
+  bcd *part4          = (bcd *) 0;
+  bcd *delta_X_k      = (bcd *) 0;
+  bcd *delta_X_k_prev = (bcd *) 0;
+  bcd *zero           = (bcd *) 0;
+  bcd *guess_tmp      = (bcd *) 0;
 
   do
   {
-    if((A = bcd_new()) == (bcd *) 0)                           { break; }
-    if(bcd_copy(this->base, A) == false)                       { break; }
+    if((A = bcd_new()) == (bcd *) 0)                                 { break; }
+    if(bcd_copy(this->base, A) == false)                             { break; }
 
     uint64_t n_int = this->exp_denominator;
-    if((n_f = bcd_new()) == (bcd *) 0)                         { break; }
-    if(bcd_import(n_f, this->exp_denominator) == false)        { break; }
+    if((n_f = bcd_new()) == (bcd *) 0)                               { break; }
+    if(bcd_import(n_f, this->exp_denominator) == false)              { break; }
 
-    char str1[64];
-    if(bcd_to_str(A, str1, sizeof(str1)) == false)             { break; }
-    DBG_PRINT("%s(): A %s: n %lld\n", __func__, str1, n_int);
+    if((X_k = bcd_new()) == (bcd *) 0)                               { break; }
+    if(bcd_import(X_k, 1) == false)                                  { break; }
 
-    if((X_k = bcd_new()) == (bcd *) 0)                         { break; }
-    if(bcd_import(X_k, 2) == false)                            { break; }
+    if((part1          = bcd_new()) == (bcd *) 0)                    { break; }
+    if((part2          = bcd_new()) == (bcd *) 0)                    { break; }
+    if((part3          = bcd_new()) == (bcd *) 0)                    { break; }
+    if((part4          = bcd_new()) == (bcd *) 0)                    { break; }
+    if((delta_X_k      = bcd_new()) == (bcd *) 0)                    { break; }
+    if((delta_X_k_prev = bcd_new()) == (bcd *) 0)                    { break; }
 
-    if((part1     = bcd_new()) == (bcd *) 0)                   { break; }
-    if((part2     = bcd_new()) == (bcd *) 0)                   { break; }
-    if((part3     = bcd_new()) == (bcd *) 0)                   { break; }
-    if((part4     = bcd_new()) == (bcd *) 0)                   { break; }
-    if((delta_X_k = bcd_new()) == (bcd *) 0)                   { break; }
-    if((zero      = bcd_new()) == (bcd *) 0)                   { break; }
+    if(bcd_import(delta_X_k_prev, 0) == false)                       { break; }
 
-    if(bcd_import(zero, 0) == false)                           { break; }
+    {
+      char A_str[64], n_str[64], X_k_str[64];
+      if(bcd_to_str(A,       A_str, sizeof(  A_str)) == false)       { break; }
+      if(bcd_to_str(n_f,     n_str, sizeof(  n_str)) == false)       { break; }
+      if(bcd_to_str(X_k,   X_k_str, sizeof(X_k_str)) == false)       { break; }
+      DBG_PRINT("%s(): START: A %s: n %s: X_k %s\n", __func__, A_str, n_str, X_k_str);
+    }
 
     /* Solve the nth root (see description above). */
     int x;
@@ -314,36 +320,60 @@ fp_exp_nth_root_guess(fp_exp *this,
        *             PART__1         -PART__2-
        * Delta X_k = (1 / n) * ((A / X_k^(n-1)) - X_k); X_k+1 = X_k + Delta X_k.
        */
-      if(bcd_import(part1, 1) == false)                        { break; }
-      if(bcd_op_div(part1, n_f) == false)                      { break; }
+      if(bcd_import(part1, 1) == false)                              { break; }
+      if(bcd_op_div(part1, n_f) == false)                            { break; }
 
-      if(fp_exp_integer_exp(X_k, (n_int - 1), part2) == false) { break; }
+      if(fp_exp_integer_exp(X_k, (n_int - 1), part2) == false)       { break; }
 
-      if(bcd_copy(A, part3) == false)                          { break; }
-      if(bcd_op_div(part3, part2) == false)                    { break; }
+      if(bcd_copy(A, part3) == false)                                { break; }
+      if(bcd_op_div(part3, part2) == false)                          { break; }
 
-      if(bcd_copy(part3, part4) == false)                      { break; }
-      if(bcd_op_sub(part4, X_k) == false)                      { break; }
+      if(bcd_copy(part3, part4) == false)                            { break; }
+      if(bcd_op_sub(part4, X_k) == false)                            { break; }
 
-      if(bcd_copy(part1, delta_X_k) == false)                  { break; }
-      if(bcd_op_mul(delta_X_k, part4) == false)                { break; }
+      if(bcd_copy(part1, delta_X_k) == false)                        { break; }
+      if(bcd_op_mul(delta_X_k, part4) == false)                      { break; }
 
-      if(bcd_cmp(delta_X_k, zero) == 0)
+      {
+        char part1_str[64], part2_str[64], part3_str[64], part4_str[64];
+        char str1[64], str2[64], str3[64], str4[64];
+        if(bcd_to_str(part1, part1_str, sizeof(part1_str)) == false) { break; }
+        if(bcd_to_str(part2, part2_str, sizeof(part2_str)) == false) { break; }
+        if(bcd_to_str(part3, part3_str, sizeof(part3_str)) == false) { break; }
+        if(bcd_to_str(part4, part4_str, sizeof(part4_str)) == false) { break; }
+        if(bcd_to_str(A,          str1, sizeof(str1))      == false) { break; }
+        if(bcd_to_str(n_f,        str2, sizeof(str2))      == false) { break; }
+        if(bcd_to_str(X_k,        str3, sizeof(str3))      == false) { break; }
+        if(bcd_to_str(delta_X_k,  str4, sizeof(str4))      == false) { break; }
+        DBG_PRINT("%s(): %4d: A %s: n %s: part1 %s: part2 %s: part3 %s: part4 %s: X_k %s, delta_X_k %s\n",
+                    __func__, x, str1, str2, part1_str, part2_str, part3_str, part4_str, str3, str4);
+      }
+
+      if(bcd_cmp(delta_X_k, delta_X_k_prev) == 0)
       {
         break;
       }
-      if(bcd_op_add(X_k, delta_X_k) == false)                  { break; }
-      if(bcd_copy(X_k, guess) == false)                        { break; }
+      if(bcd_copy(delta_X_k, delta_X_k_prev) == false)               { break; }
+
+      if(bcd_op_add(X_k, delta_X_k) == false)                        { break; }
+      if(bcd_copy(X_k, guess) == false)                              { break; }
     }
-    char str2[64];
-    if(bcd_to_str(this->base, str1, sizeof(str1)) == false)    { break; }
-    if(bcd_to_str(X_k,        str2, sizeof(str2)) == false)    { break; }
-    DBG_PRINT("%s(): x %d: this->base %s: this->exp_denominator %lld: X_k %s\n",
-               __func__, x, str1, this->exp_denominator, str2);
+
+    /* The guess is always positive. */
+    if((zero = bcd_new()) == (bcd *) 0)                              { break; }
+    if(bcd_import(zero, 0) == false)                                 { break; }
+    if(bcd_cmp(guess, zero) < 0)
+    {
+      if((guess_tmp = bcd_new()) == (bcd *) 0)                       { break; }
+      if(bcd_copy(zero, guess_tmp) == false)                         { break; }
+      if(bcd_op_sub(guess_tmp, guess) == false)                      { break; }
+      if(bcd_copy(guess_tmp, guess) == false)                        { break; }
+    }
 
     retcode = true;
   } while(0);
 
+  bcd_delete(guess_tmp);
   bcd_delete(zero);
   bcd_delete(delta_X_k);
   bcd_delete(part4);
