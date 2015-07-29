@@ -31,7 +31,7 @@
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
 
-#define BCD_DBG_PRINT_FLAGS (BCD_DBG_OP_DIV | BCD_DBG_STR_TO_DECIMAL | BCD_DBG_TO_STR)
+#define BCD_DBG_PRINT_FLAGS (BCD_DBG_TO_STR)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
 
 /******************************************************************************
@@ -1783,6 +1783,7 @@ bcd_to_str(bcd  *this,
       int16_t max_exp  = (BCD_NUM_DIGITS - 1);
       int16_t min_exp1 = (0 - max_exp);
       int16_t min_exp2 = -3;
+      int significant_digits = bcd_sig_num_digits(&val->significand);
 
       /* This is the first digit after the set of digits that we'll place in
        * the string.  We'll use this to determine if we need to round up. */
@@ -1812,7 +1813,8 @@ bcd_to_str(bcd  *this,
       }
 
       int16_t exp = val->exponent;
-      int significant_digits = bcd_sig_num_digits(&val->significand);
+      BCD_PRINT(BCD_DBG_TO_STR, "%s(): max_exp %d: min_exp1 %d: min_exp2 %d: exp %d: sig_digits %d.\n", __func__,
+              max_exp, min_exp1, min_exp2, exp, significant_digits);
 
       if((exp >  max_exp)  || // Test #1.
          (exp <= min_exp1) || // Test #2.
@@ -2341,7 +2343,9 @@ bcd_test(void)
     { "BCD_DIV_15", bcd_op_div, "9999999999999999"                 , "7777777777777777"                 ,                     "1.285714285714286"     }, // 16 / 16 = 16 digits.
     { "BCD_DIV_16", bcd_op_div,                "3"                 , "1834944619757441"                 ,                     "1.634926726233605e-15" }, // Bug.
 
-    { "BCD_EXP_01", bcd_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
+    { "BCD_EXP_01", bcd_op_exp,                "2"                 ,                "3"                 ,                     "8"                     }, // Simple.
+    { "BCD_EXP_02", bcd_op_exp,               "14"                 ,                "5s"               ,                      "1.859344320818706e-6"  }, // Negative exponent.
+    { "BCD_EXP_03", bcd_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
   };
   size_t bcd_math_test_size = (sizeof(math_tests) / sizeof(bcd_math_test));
 
