@@ -1772,6 +1772,18 @@ bcd_to_str(bcd  *this,
       if((val = bcd_new()) == (bcd *) 0)                                              { break; }
       if(bcd_copy(this, val) == false)                                                { break; }
 
+      /* Figure out whether to use standard or scientific notation.
+       * 1. If the exponent > BCD_NUM_DIGITS, use scientific.
+       * 2. If the exponent < -BCD_NUM_DIGITS, use scientific.
+       * 3. If the exponent < -3 and it's not a rational number, use scientific.
+       *    Example, 0.00033333333333333333333333333333333 (scientific).
+       *             0.000125 (regular).
+       * 4. Everything else use regular.
+       */
+      int16_t max_exp  = (BCD_NUM_DIGITS - 1);
+      int16_t min_exp1 = (0 - max_exp);
+      int16_t min_exp2 = -3;
+
       /* This is the first digit after the set of digits that we'll place in
        * the string.  We'll use this to determine if we need to round up. */
       uint8_t carry_digit = bcd_sig_get_digit(&val->significand, BCD_NUM_DIGITS);
@@ -1799,23 +1811,12 @@ bcd_to_str(bcd  *this,
                   bcd_sig_to_str(&val->significand), val->exponent, val->got_decimal_point, val->sign);
       }
 
-      /* Figure out whether to display the value in standard or scientific
-       * notation. */
-      int16_t max_exp = (BCD_NUM_DIGITS - 1);
-      int16_t min_exp = (0 - max_exp);
       int16_t exp = val->exponent;
-      if((exp <= max_exp) && (exp >= min_exp))
-      {
-        /* Regular notation (1,222,333). */
-        retcode = bcd_to_str_decimal(&val->significand,
-                                      val->exponent,
-                                      val->char_count,
-                                      val->got_decimal_point,
-                                      val->sign,
-                                      buf,
-                                      buf_size);
-      }
-      else
+      int significant_digits = bcd_sig_num_digits(&val->significand);
+
+      if((exp >  max_exp)  || // Test #1.
+         (exp <= min_exp1) || // Test #2.
+         ((exp < min_exp2) && (significant_digits > BCD_NUM_DIGITS)))
       {
         /* Need to use scientific notation (1.234e18). */
         retcode = bcd_to_str_decimal(&val->significand,
@@ -1848,6 +1849,17 @@ bcd_to_str(bcd  *this,
           exponent -= (digit * num);
         }
         buf[buf_x] = 0;
+      }
+      else
+      {
+        /* Regular notation (1,222,333). */
+        retcode = bcd_to_str_decimal(&val->significand,
+                                      val->exponent,
+                                      val->char_count,
+                                      val->got_decimal_point,
+                                      val->sign,
+                                      buf,
+                                      buf_size);
       }
     } while(0);
 
