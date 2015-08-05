@@ -38,6 +38,10 @@
  ****************************** CLASS DEFINITION ******************************
  *****************************************************************************/
 
+/* The number of digits the user can push to bcd_add_char(). */
+#define BCD_NUM_DIGITS 16 // Must be a multiple of 2.
+
+#if (BCD_NUM_DIGITS >= 16)
 /* The basic data element that stores the BCD digits internally. */
 typedef uint32_t significand_section_t;
 
@@ -45,30 +49,56 @@ typedef uint32_t significand_section_t;
  * addition operation to carry at the top end. */
 typedef uint64_t significand_large_section_t;
 
+#define SIGNIFICAND_ADD_HALF_VAL1              0x066666666ll
+#define SIGNIFICAND_ADD_HALF_VAL2              0x111111110ll
+#define SIGNIFICAND_SECTION_MASK                0xFFFFFFFF
+#define SIGNIFICAND_SECT_TENS_COMPLEMENT_VAL    0x99999999
+
+#elif (BCD_NUM_DIGITS >= 8)
+
+/* The basic data element that stores the BCD digits internally. */
+typedef uint16_t significand_section_t;
+
+/* The data element that is passed to bcd_add_half_width().  It allows an
+ * addition operation to carry at the top end. */
+typedef uint32_t significand_large_section_t;
+
+#define SIGNIFICAND_ADD_HALF_VAL1              0x06666ll
+#define SIGNIFICAND_ADD_HALF_VAL2              0x11110ll
+#define SIGNIFICAND_SECTION_MASK                0xFFFF
+#define SIGNIFICAND_SECT_TENS_COMPLEMENT_VAL    0x9999
+
+#else
+
+/* The basic data element that stores the BCD digits internally. */
+typedef uint8_t significand_section_t;
+
+/* The data element that is passed to bcd_add_half_width().  It allows an
+ * addition operation to carry at the top end. */
+typedef uint16_t significand_large_section_t;
+
+#define SIGNIFICAND_ADD_HALF_VAL1              0x066ll
+#define SIGNIFICAND_ADD_HALF_VAL2              0x110ll
+#define SIGNIFICAND_SECTION_MASK                0xFF
+#define SIGNIFICAND_SECT_TENS_COMPLEMENT_VAL    0x99
+
+#endif
+
 /* The number of digits that can be stored in a single data element. */
 #define SIGNIFICAND_DIGITS_PER_SECTION (sizeof(significand_section_t) * 2)
-
-/* This is the number of digits that the user can push into a bcd object via
- * bcd_add_char(). */
-#define BCD_NUM_DIGITS 16 // Must be a multiple of 8
 
 /* This is the number of digits that we work with internally.  It gives us a
  * lot of extra precision, thus allowing us to do things like:
  * - Perform repeated operations like exponentiation.
  * - Perform rounding on results.
  */
-#define BCD_NUM_DIGITS_INTERNAL (BCD_NUM_DIGITS * 2)
+#define BCD_NUM_DIGITS_INTERNAL (BCD_NUM_DIGITS * 3)
 
 /* The number of data elements required to hold all of the digits. */
 #define SIGNIFICAND_SECTIONS_INTERNAL (BCD_NUM_DIGITS_INTERNAL / SIGNIFICAND_DIGITS_PER_SECTION)
 
 /* The definition of the significand that is located in each bcd object. */
 typedef struct { significand_section_t s[SIGNIFICAND_SECTIONS_INTERNAL]; } significand_t;
-
-#define SIGNIFICAND_ADD_HALF_VAL1              0x066666666ll
-#define SIGNIFICAND_ADD_HALF_VAL2              0x111111110ll
-#define SIGNIFICAND_SECTION_MASK                0xFFFFFFFF
-#define SIGNIFICAND_SECT_TENS_COMPLEMENT_VAL    0x99999999
 
 /* This is the bcd class. */
 struct bcd {
@@ -196,7 +226,7 @@ bcd_sig_get_digit(significand_t *significand,
   if( (significand != (significand_t *) 0) && (offset < BCD_NUM_DIGITS_INTERNAL) )
   {
     int index = offset / SIGNIFICAND_DIGITS_PER_SECTION;
-    int section_offset = (offset % 8);
+    int section_offset = (offset % SIGNIFICAND_DIGITS_PER_SECTION);
     retval = bcd_sect_get_digit(significand->s[index], section_offset);
   }
 
@@ -229,7 +259,7 @@ bcd_sig_set_digit(significand_t *significand,
   if( (significand != (significand_t *) 0) && (offset < BCD_NUM_DIGITS_INTERNAL) )
   {
     int index = offset / SIGNIFICAND_DIGITS_PER_SECTION;
-    int section_offset = (offset % 8);
+    int section_offset = (offset % SIGNIFICAND_DIGITS_PER_SECTION);
     retcode = bcd_sect_set_digit(&significand->s[index], section_offset, value);
   }
 
@@ -556,7 +586,7 @@ bcd_sig_to_str(significand_t *significand)
 
   /* This is a collection of buffers that is used for building strings.
    * NOTE: The size has to be a power of 2. */
-  static char *sig_msgs[16] = { 0 };
+  static char *sig_msgs[] = { 0 };
   static char  sig_msgs_size = (sizeof(sig_msgs) / sizeof(sig_msgs[0]));
   static int   sig_msgs_index = 0;
 
@@ -1776,8 +1806,8 @@ bcd_to_str(bcd  *this,
        * 1. If the exponent > BCD_NUM_DIGITS, use scientific.
        * 2. If the exponent < -BCD_NUM_DIGITS, use scientific.
        * 3. If the exponent < -3 and it's not a rational number, use scientific.
-       *    Example, 0.00033333333333333333333333333333333 (scientific).
-       *             0.000125 (regular).
+       *    Example, 0.00033333333333333333333333333333333 (do as scientific).
+       *             0.000125 (do as regular).
        * 4. Everything else use regular.
        */
       int16_t max_exp  = (BCD_NUM_DIGITS - 1);
@@ -2106,7 +2136,7 @@ bcd_test(void)
     {
       printf("  Sig-Sect Tests (SIGNIFICAND_DIGITS_PER_SECTION = %d).\n", SIGNIFICAND_DIGITS_PER_SECTION);
       int j;
-      significand_section_t test_sect = { 0xFFFFFFFF };
+      significand_section_t test_sect = { SIGNIFICAND_SECTION_MASK };
       for(j = 0; j < SIGNIFICAND_DIGITS_PER_SECTION; j++)
       {
         if(bcd_sect_set_digit(&test_sect, j, (j + 1)) != true)                                return false;
@@ -2124,7 +2154,7 @@ bcd_test(void)
     {
       printf("  Sig Tests.\n");
       int j;
-      significand_t test_sig = { .s = { 0xFFFFFFFF } };
+      significand_t test_sig = { .s = { SIGNIFICAND_SECTION_MASK } };
       for(j = 0; j < BCD_NUM_DIGITS_INTERNAL; j++)
       {
         if(bcd_sig_set_digit(&test_sig, j, ((j + 1) & 0xF)) != true)                          return false;
