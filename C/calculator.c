@@ -796,26 +796,28 @@ calculator_test(void)
     const char *result;
   } calculator_test;
   calculator_test tests[] = {
-    { "CALC_01", "",                true,  true,       "0"            }, // Empty equation.
-    { "CALC_02", "1+2*3",           true,  true,       "7"            }, // Order of operations.
-    { "CALC_03", "10+20*30",        true,  true,     "610"            }, // Order of operations.
-    { "CALC_04", "10/0+20*30",     false, false,        ""            }, // Divide by zero.
-    { "CALC_05", "\b2*((5+5)/2)",   true,  true,      "10"            }, // Embedded parentheses.
-    { "CALC_06", "(1+2)*3",         true,  true,       "9"            }, // Parentheses override order.
-    { "CALC_07", "*3",              true,  true,      "27"            }, // Follow-on to the previous result.
-    { "CALC_08", "7/10",            true,  true,       "0.7"          }, // int / int = float.
-    { "CALC_09", "7.4/10",          true,  true,       "0.74"         }, // float / int.
-    { "CALC_10", "2.5*2",           true,  true,       "5"            }, // float * int.
-    { "CALC_11", "2^3",             true,  true,       "8"            }, // int ^ int.
-    { "CALC_12", "2^3s",            true,  true,       "0.125"        }, // int ^ -int.
-    { "CALC_13", "2.34^5",          true,  true,      "70.1583371424" }, // float ^ int.
-    { "CALC_14", "3^12.345",        true,  true, "776,357.74428398"   }, // int ^ float.
-    { "CALC_15", "2.34^5.678",      true,  true,     "124.8554885559" }, // float ^ float.
-    { "CALC_16", "(10+20)*(30+40", false, false,        ""            }, // Unbalanced parentheses.
-    { "CALC_17", "5+(10)",          true,  true,      "15"            }, // Odd use of parentheses.
-    { "CALC_18", "200+()*3",        true,  true,     "600"            }, // Odd use of parentheses.
-    { "CALC_19", "11*)",           false, false,        ""            }, // Unablanced parentheses.
-    { "CALC_20", "7*(2+9",         false, false,        ""            }, // Unablanced parentheses.
+    { "CALC_01", "",                true,  true,       "0"                }, // Empty equation.
+    { "CALC_02", "1+2*3",           true,  true,       "7"                }, // Order of operations.
+    { "CALC_03", "10+20*30",        true,  true,     "610"                }, // Order of operations.
+    { "CALC_04", "10/0+20*30",     false, false,        ""                }, // Divide by zero.
+    { "CALC_05", "\b2*((5+5)/2)",   true,  true,      "10"                }, // Embedded parentheses.
+    { "CALC_06", "(1+2)*3",         true,  true,       "9"                }, // Parentheses override order.
+    { "CALC_07", "*3",              true,  true,      "27"                }, // Follow-on to the previous result.
+    { "CALC_08", "7/10",            true,  true,       "0.7"              }, // int / int = float.
+    { "CALC_09", "7.4/10",          true,  true,       "0.74"             }, // float / int.
+    { "CALC_10", "2.5*2",           true,  true,       "5"                }, // float * int.
+    { "CALC_11", "2^3",             true,  true,       "8"                }, // int ^ int.
+    { "CALC_12", "2^3s",            true,  true,       "0.125"            }, // int ^ -int.
+    { "CALC_13", "2.34^5",          true,  true,      "70.1583371424"     }, // float ^ int.
+    { "CALC_14", "3^2.5",           true,  true,      "15.5884572681199"  }, // float ^ int.
+    { "CALC_15", "3^12.345",        true,  true, "776,357.74428398"       }, // int ^ float.
+    { "CALC_16", "2.34^5.678",      true,  true,     "124.8554885559"     }, // float ^ float.
+    { "CALC_17", "(10+20)*(30+40", false, false,        ""                }, // Unbalanced parentheses.
+    { "CALC_18", "5+(10)",          true,  true,      "15"                }, // Odd use of parentheses.
+    { "CALC_19", "200+()*3",        true,  true,     "600"                }, // Odd use of parentheses.
+    { "CALC_20", "11*)",           false, false,        ""                }, // Unablanced parentheses.
+    { "CALC_21", "\b7*(2+9",       false, false,        ""                }, // Unablanced parentheses.
+    { "CALC_22", "\b2s^.5",        false, false,        ""                }, // Neg base, floating point exp.
 
   };
   size_t calculator_test_size = (sizeof(tests) / sizeof(calculator_test));
