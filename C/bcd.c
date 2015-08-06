@@ -92,7 +92,7 @@ typedef uint16_t significand_large_section_t;
  * - Perform repeated operations like exponentiation.
  * - Perform rounding on results.
  */
-#define BCD_NUM_DIGITS_INTERNAL (BCD_NUM_DIGITS * 3)
+#define BCD_NUM_DIGITS_INTERNAL (BCD_NUM_DIGITS * 2)
 
 /* The number of data elements required to hold all of the digits. */
 #define SIGNIFICAND_SECTIONS_INTERNAL (BCD_NUM_DIGITS_INTERNAL / SIGNIFICAND_DIGITS_PER_SECTION)
@@ -2141,7 +2141,12 @@ bcd_test(void)
       {
         if(bcd_sect_set_digit(&test_sect, j, (j + 1)) != true)                                return false;
       }
-      if(test_sect != 0x12345678)                                                             return false;
+      significand_section_t comp_sect;
+      int                   comp_sect_num_digits = SIGNIFICAND_DIGITS_PER_SECTION;
+      if(comp_sect_num_digits == 2)      comp_sect = (0x12       & SIGNIFICAND_SECTION_MASK);
+      else if(comp_sect_num_digits == 4) comp_sect = (0x1234     & SIGNIFICAND_SECTION_MASK);
+      else if(comp_sect_num_digits == 8) comp_sect = (0x12345678 & SIGNIFICAND_SECTION_MASK);
+      if(test_sect != comp_sect)                                                              return false;
       for(j = 0; j < SIGNIFICAND_DIGITS_PER_SECTION; j++)
       {
         if(bcd_sect_get_digit(test_sect, j) != (j + 1))                                       return false;
@@ -2152,17 +2157,23 @@ bcd_test(void)
     }
 
     {
-      printf("  Sig Tests.\n");
+      printf("  Significand Tests.\n");
       int j;
       significand_t test_sig = { .s = { SIGNIFICAND_SECTION_MASK } };
+      significand_section_t sig_test_data[SIGNIFICAND_SECTIONS_INTERNAL] = { 0 };
       for(j = 0; j < BCD_NUM_DIGITS_INTERNAL; j++)
       {
         if(bcd_sig_set_digit(&test_sig, j, ((j + 1) & 0xF)) != true)                          return false;
       }
-      significand_section_t sig_test_data[2] = { 0x12345678, 0x9ABCDEF0 };
+      for(j = 0; j < BCD_NUM_DIGITS_INTERNAL; j++)
+      {
+        int sect_index = (j / SIGNIFICAND_DIGITS_PER_SECTION);
+        int sect_off   = (j % SIGNIFICAND_DIGITS_PER_SECTION);
+        if(bcd_sect_set_digit(&sig_test_data[sect_index], sect_off, ((j + 1) & 0xF)) != true) return false;
+      }
       for(j = 0; j < SIGNIFICAND_SECTIONS_INTERNAL; j++)
       {
-        if(test_sig.s[j] != sig_test_data[(j & 0x1)])                                         return false;
+        if(test_sig.s[j] != sig_test_data[j])                                                 return false;
       }
       for(j = 0; j < BCD_NUM_DIGITS_INTERNAL; j++)
       {
@@ -2176,20 +2187,41 @@ bcd_test(void)
     {
       printf("  Sig Manipulation Tests.\n");
       int j;
-      significand_section_t sig_test_data1[2] = { 0x12345678, 0xFEDCBA98 };
-      significand_section_t sig_test_data2[4] = { 0x00012345, 0x678FEDCB, 0xA9812345, 0x678FEDCB };
-      significand_section_t sig_test_data3[4] = { 0x45678FED, 0xCBA98123, 0x45678FED, 0xCB000000 };
+      significand_section_t sig_test_data1[4] = { 0, 0, 0, 0 };
+      significand_section_t sig_test_data2[4] = { 0, 0, 0, 0 };
+      significand_section_t sig_test_data3[4] = { 0, 0, 0, 0 };
+      for(j = 0; j < (SIGNIFICAND_DIGITS_PER_SECTION * 4); j++)
+      {
+        int sect_index = (j / SIGNIFICAND_DIGITS_PER_SECTION);
+        int sect_off   = (j % SIGNIFICAND_DIGITS_PER_SECTION);
+        if(bcd_sect_set_digit(&sig_test_data1[sect_index], sect_off, (j & 0xF)) != true)      return false;
+      }
+      for(j = 0; j < (SIGNIFICAND_DIGITS_PER_SECTION * 4); j++)
+      {
+        int sect_index = ((j + 3) / SIGNIFICAND_DIGITS_PER_SECTION);
+        int sect_off   = ((j + 3) % SIGNIFICAND_DIGITS_PER_SECTION);
+        if(sect_index < 4)
+        {
+          if(bcd_sect_set_digit(&sig_test_data2[sect_index], sect_off, (j & 0xF)) != true)    return false;
+        }
+      }
+      for(j = 0; j < ((SIGNIFICAND_DIGITS_PER_SECTION * 4) - 7); j++)
+      {
+        int sect_index = (j / SIGNIFICAND_DIGITS_PER_SECTION);
+        int sect_off   = (j % SIGNIFICAND_DIGITS_PER_SECTION);
+        if(bcd_sect_set_digit(&sig_test_data3[sect_index], sect_off, ((j + 4) & 0xF)) != true)return false;
+      }
       significand_t sig1 = { .s = { 0 } };
       for(j = 0; j < SIGNIFICAND_SECTIONS_INTERNAL; j++)
       {
-        sig1.s[j] = sig_test_data1[(j & 1)];
+        sig1.s[j] = sig_test_data1[j];
       }
       if(bcd_shift_significand(&sig1, 3) != true)                                             return false;
       for(j = 0; j < SIGNIFICAND_SECTIONS_INTERNAL; j++)
       {
         if(sig1.s[j] != sig_test_data2[j])                                                    return false;
       }
-      if(bcd_shift_significand(&sig1, -6) != true)                                            return false;
+      if(bcd_shift_significand(&sig1, -7) != true)                                            return false;
       for(j = 0; j < SIGNIFICAND_SECTIONS_INTERNAL; j++)
       {
         if(sig1.s[j] != sig_test_data3[j])                                                    return false;
@@ -2201,13 +2233,25 @@ bcd_test(void)
 
     {
       printf("  Sig Copy and Compare.\n");
-      significand_t sig1 = { .s = { 0x12345678, 0xFEDCBA98 } };
-      significand_t sig2 = { .s = { 0xFEDABC78, 0xFE501234 } };
-      significand_t mask = { .s = { 0x000000FF, 0xFF000000 } };
+      int j;
+      significand_t sig0 = { .s = { 0 } };
+      significand_t sig1 = { .s = { 0 } };
+      significand_t sig2 = { .s = { 0 } };
+      significand_t mask = { .s = { 0 } };
+      for(j = 0; j < BCD_NUM_DIGITS_INTERNAL; j++)
+      {
+        if(bcd_sig_set_digit(&sig0, j, ((j + 1) & 0xF)) != true)                              return false;
+        if(bcd_sig_set_digit(&sig1, j, ((j + 1) & 0xF)) != true)                              return false;
+        if(bcd_sig_set_digit(&sig2, j, ((j + 4) & 0xF)) != true)                              return false;
+        if(j == SIGNIFICAND_DIGITS_PER_SECTION)
+        {
+          if(bcd_sig_set_digit(&mask, j, 0xFF) != true)                                       return false;
+        }
+      }
       if(bcd_sig_cmp(&sig1,     0, &sig2,     0) != -1)                                       return false;
-      if(bcd_sig_cmp(&sig1, &mask, &sig2, &mask) !=  0)                                       return false;
+      if(bcd_sig_cmp(&sig1, &mask, &sig2, &mask) >=  0)                                       return false;
       if(bcd_sig_copy(&sig1, &sig2) != true)                                                  return false;
-      if((sig1.s[0] != 0x12345678) || (sig1.s[1] != 0xFEDCBA98))                              return false;
+      if(bcd_sig_cmp(&sig0, 0, &sig1, 0) != 0)                                                return false;
       if(bcd_sig_cmp(&sig1, 0, &sig2, 0) != 0)                                                return false;
     }
   }
@@ -2230,8 +2274,8 @@ bcd_test(void)
     { "BCD_05",          "123000"                 ,               "123,000"                 }, // Integer with trailing zeroes.
     { "BCD_06",       "000123000"                 ,               "123,000"                 }, // Insignificant leading zeroes.
     { "BCD_07",             "123.456"             ,                   "123.456"             }, // Simple floating point value.
-    { "BCD_08",             "123.456000"          ,                   "123.456000"          }, // Insignificant trailing zeroes.
-    { "BCD_09",             "123.456007"          ,                   "123.456007"          }, // Significant zeroes in middle of the decimal.
+    { "BCD_08",             "123.4560"            ,                   "123.4560"            }, // Insignificant trailing zeroes.
+    { "BCD_09",             "123.45607"           ,                   "123.45607"           }, // Significant zeroes in middle of the decimal.
     { "BCD_10",             "000.000123"          ,                     "0.000123"          }, // Insignificant and significant zeroes.
     { "BCD_11",             "000.0123S"           ,                    "-0.0123"            }, // Negative number.
     { "BCD_12",                ".000000000000000" ,                     "0.000000000000000" }, // No significant digit.
@@ -2376,6 +2420,7 @@ bcd_test(void)
     { "BCD_EXP_01", bcd_op_exp,                "2"                 ,                "3"                 ,                     "8"                     }, // Simple.
     { "BCD_EXP_02", bcd_op_exp,               "14"                 ,                "5s"               ,                      "1.859344320818706e-6"  }, // Negative exponent.
     { "BCD_EXP_03", bcd_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
+    { "BCD_EXP_04", bcd_op_exp,                "3"                 ,                 ".5"               ,                     "1.732050807568877"     }, // Square root of 3.
   };
   size_t bcd_math_test_size = (sizeof(math_tests) / sizeof(bcd_math_test));
 
