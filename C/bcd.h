@@ -38,6 +38,8 @@ bool bcd_import(bcd *this, int64_t src);
 
 bool bcd_export(bcd *this, int64_t *dst);
 
+const char * bcd_get_dbg_info(bcd *this);
+
 /********************************** TEST API **********************************/
 
 #if defined(TEST)

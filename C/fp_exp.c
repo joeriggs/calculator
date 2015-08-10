@@ -304,11 +304,11 @@ fp_exp_nth_root_guess(fp_exp *this,
     if(bcd_import(delta_X_k_prev, 0) == false)                       { break; }
 
     {
-      char A_str[64], n_str[64], X_k_str[64];
-      if(bcd_to_str(A,       A_str, sizeof(  A_str)) == false)       { break; }
-      if(bcd_to_str(n_f,     n_str, sizeof(  n_str)) == false)       { break; }
-      if(bcd_to_str(X_k,   X_k_str, sizeof(X_k_str)) == false)       { break; }
-      DBG_PRINT("%s(): START: A %s: n %s: X_k %s\n", __func__, A_str, n_str, X_k_str);
+      const char *str1 = bcd_get_dbg_info(A);
+      const char *str2 = bcd_get_dbg_info(n_f);
+      const char *str3 = bcd_get_dbg_info(X_k);
+      const char *str4 = bcd_get_dbg_info(part1);
+      DBG_PRINT("%s(): START: A %s: n %s: X_k %s: part1 %s\n", __func__, str1, str2, str3, str4);
     }
 
     /* Solve the nth root (see description above). */
@@ -327,28 +327,36 @@ fp_exp_nth_root_guess(fp_exp *this,
 
       if(bcd_copy(A, part3) == false)                                { break; }
       if(bcd_op_div(part3, part2) == false)                          { break; }
+      {
+        const char *str1 = bcd_get_dbg_info(A);
+        const char *str2 = bcd_get_dbg_info(part2);
+        const char *str3 = bcd_get_dbg_info(part3);
+        DBG_PRINT("%s(): %s / %s = %s\n", __func__, str1, str2, str3);
+      }
 
       if(bcd_copy(part3, part4) == false)                            { break; }
       if(bcd_op_sub(part4, X_k) == false)                            { break; }
+      {
+        const char *str1 = bcd_get_dbg_info(part3);
+        const char *str2 = bcd_get_dbg_info(X_k);
+        const char *str3 = bcd_get_dbg_info(part4);
+        DBG_PRINT("%s(): %s - %s = %s\n", __func__, str1, str2, str3);
+      }
 
       if(bcd_copy(part1, delta_X_k) == false)                        { break; }
       if(bcd_op_mul(delta_X_k, part4) == false)                      { break; }
-
       {
-        char part1_str[64], part2_str[64], part3_str[64], part4_str[64];
-        char str1[64], str2[64], str3[64], str4[64];
-        if(bcd_to_str(part1, part1_str, sizeof(part1_str)) == false) { break; }
-        if(bcd_to_str(part2, part2_str, sizeof(part2_str)) == false) { break; }
-        if(bcd_to_str(part3, part3_str, sizeof(part3_str)) == false) { break; }
-        if(bcd_to_str(part4, part4_str, sizeof(part4_str)) == false) { break; }
-        if(bcd_to_str(A,          str1, sizeof(str1))      == false) { break; }
-        if(bcd_to_str(n_f,        str2, sizeof(str2))      == false) { break; }
-        if(bcd_to_str(X_k,        str3, sizeof(str3))      == false) { break; }
-        if(bcd_to_str(delta_X_k,  str4, sizeof(str4))      == false) { break; }
-        DBG_PRINT("%s(): %4d: A %s: n %s: part1 %s: part2 %s: part3 %s: part4 %s: X_k %s, delta_X_k %s\n",
-                    __func__, x, str1, str2, part1_str, part2_str, part3_str, part4_str, str3, str4);
+        const char *str1 = bcd_get_dbg_info(part1);
+        const char *str2 = bcd_get_dbg_info(part4);
+        const char *str3 = bcd_get_dbg_info(delta_X_k);
+        DBG_PRINT("%s(): %s * %s = %s\n", __func__, str1, str2, str3);
       }
 
+      {
+        const char *str1 = bcd_get_dbg_info(delta_X_k);
+        const char *str2 = bcd_get_dbg_info(delta_X_k_prev);
+        DBG_PRINT("%s(): %4d: Compare %s vs %s\n", __func__, x, str1, str2);
+      }
       if(bcd_cmp(delta_X_k, delta_X_k_prev) == 0)
       {
         break;

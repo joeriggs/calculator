@@ -562,8 +562,8 @@ bcd_sig_section_to_str(significand_section_t section)
   return retval;
 }
 
-/* This function will convert a significand_t to an ASCII string.  It returns a
- * pointer to the string.
+/* This function will return a string that contains debug info about the bcd
+ * object.
  *
  * WARNING: This function will maintain a limited number of buffers that can
  *          hold a string.  The caller doesn't need to free the string after
@@ -586,17 +586,26 @@ bcd_sig_to_str(significand_t *significand)
 
   /* This is a collection of buffers that is used for building strings.
    * NOTE: The size has to be a power of 2. */
-  static char *sig_msgs[] = { 0 };
+  static char *sig_msgs[8] = { 0 };
   static char  sig_msgs_size = (sizeof(sig_msgs) / sizeof(sig_msgs[0]));
   static int   sig_msgs_index = 0;
 
   if(significand != (significand_t *) 0)
   {
-    /* We allocate the pointer the first time we need it. */
+    /* We allocate the pointers the first time we need them. */
     if(sig_msgs[sig_msgs_index] == (char *) 0)
     {
-      int alloc_size = ((SIGNIFICAND_SECTIONS_INTERNAL * (SIGNIFICAND_DIGITS_PER_SECTION + 1)) + 1);
-      sig_msgs[sig_msgs_index] = (char *) malloc(alloc_size);
+      int   msg_size = ((SIGNIFICAND_SECTIONS_INTERNAL * (SIGNIFICAND_DIGITS_PER_SECTION + 1)) + 1);
+      int alloc_size = (sig_msgs_size * msg_size);
+      char *msg_buf = (char *) malloc(alloc_size);
+      if(msg_buf != (char *) 0)
+      {
+        int j;
+        for(j = 0; j < sig_msgs_size; j++)
+        {
+          sig_msgs[j] = msg_buf + (j * msg_size);
+        }
+      }
     }
 
     if(sig_msgs[sig_msgs_index] != (char *) 0)
@@ -2118,6 +2127,57 @@ bcd_export(bcd     *this,
   } while(0);
 
   return retcode;
+}
+
+/* Return an ASCII string that contains debug information about this.
+ *
+ * Input:
+ *   this     = A pointer to the bcd object.
+ *
+ * Output:
+ *   Returns a pointer to a string that contains the debug info.
+ */
+const char *
+bcd_get_dbg_info(bcd *this)
+{
+  char *retval = "UNKNOWN";
+
+  do
+  {
+    if(this == (bcd *) 0)                                               { break; }
+
+    /* This is a collection of buffers that is used for building strings.
+     * NOTE: The size has to be a power of 2. */
+    static char *sig_msgs[8] = { 0 };
+    static char  sig_msgs_size = (sizeof(sig_msgs) / sizeof(sig_msgs[0]));
+    static int   sig_msgs_index = 0;
+    static int   sig_msg_size = 1024;
+
+    /* We allocate the pointers the first time we need them. */
+    if(sig_msgs[sig_msgs_index] == (char *) 0)
+    {
+      int alloc_size = (sig_msgs_size * sig_msg_size);
+      char *msg_buf = (char *) malloc(alloc_size);
+      if(msg_buf != (char *) 0)
+      {
+        int j;
+        for(j = 0; j < sig_msgs_size; j++)
+        {
+          sig_msgs[j] = msg_buf + (j * sig_msg_size);
+        }
+      }
+    }
+
+    if(sig_msgs[sig_msgs_index] != (char *) 0)
+    {
+      if(bcd_to_str(this, sig_msgs[sig_msgs_index], sig_msg_size) == false) { break; }
+
+      retval = sig_msgs[sig_msgs_index];
+      sig_msgs_index = ((sig_msgs_index + 1) % sig_msgs_size);
+    }
+  } while(0);
+
+  return retval;
 }
 
 /******************************************************************************
