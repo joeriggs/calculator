@@ -31,7 +31,7 @@
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
 
-#define BCD_DBG_PRINT_FLAGS (BCD_DBG_TO_STR)
+#define BCD_DBG_PRINT_FLAGS (0)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
 
 /******************************************************************************
@@ -623,8 +623,8 @@ bcd_sig_to_str(significand_t *significand)
  * creates a Sxxx.xxx ASCII string for you.  It does nothing fancy beyond that.
  * You have to make sure you pass it a BCD number that will fit that format.
  *
- * If the number requires more than 16 digits, then this function will fail.  It
- * expects the number to fit in a regular decimal notation.
+ * It'll fail if it requires more than BCD_NUM_DIGITS digits.  It expects the
+ * number to fit in a regular decimal notation.
  *
  * Input:
  *   significand       = A pointer to the BCD digits.
@@ -1156,6 +1156,8 @@ bcd_op_sub(bcd *op1,
 
   if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
   {
+    bcd *op2_copy = (bcd *) 0;
+
     /* op1 - 0 = op1. */
     if(bcd_sig_is_zero(&op2->significand) == true)
     {
@@ -1175,13 +1177,16 @@ bcd_op_sub(bcd *op1,
     /* op1 and op2 are both != 0. */
     else do
     {
+      if((op2_copy = bcd_new()) == (bcd *) 0) { break; }
+      if(bcd_copy(op2, op2_copy) == false)    { break; }
+
       /* Start with the raw significands. */
       significand_t *sig1 = &op1->significand;
-      significand_t *sig2 = &op2->significand;
+      significand_t *sig2 = &op2_copy->significand;
       BCD_PRINT(BCD_DBG_OP_SUB, "%s()           BEGIN: %s - %s\n", __func__, bcd_sig_to_str(sig1), bcd_sig_to_str(sig2));
 
       /* If the exponents aren't the same, adjust the smaller number up to the other. */
-      if((retcode = bcd_make_exponents_equal(sig1, &op1->exponent, sig2, &op2->exponent)) != true) break;
+      if((retcode = bcd_make_exponents_equal(sig1, &op1->exponent, sig2, &op2_copy->exponent)) != true) break;
 
       /* 10s complement (as required):
        * POS - POS  = 10's complement b.
@@ -1189,8 +1194,8 @@ bcd_op_sub(bcd *op1,
        * NEG - POS  = NO 10's complement.
        * NEG - NEG  = 10's complement a.
        */
-      if((op1->sign == false) && (op2->sign == false)) { if((retcode = bcd_tens_complement(sig2, sig2)) == false) break; }
-      if((op1->sign ==  true) && (op2->sign ==  true)) { if((retcode = bcd_tens_complement(sig1, sig1)) == false) break; }
+      if((op1->sign == false) && (op2_copy->sign == false)) { if((retcode = bcd_tens_complement(sig2, sig2)) == false) break; }
+      if((op1->sign ==  true) && (op2_copy->sign ==  true)) { if((retcode = bcd_tens_complement(sig1, sig1)) == false) break; }
       BCD_PRINT(BCD_DBG_OP_SUB, "%s() 10'S COMPLEMENT: %s, %s\n", __func__, bcd_sig_to_str(sig1), bcd_sig_to_str(sig2));
 
       uint8_t overflow;
@@ -1203,7 +1208,7 @@ bcd_op_sub(bcd *op1,
        * NEG - POS  = Sign is negative.
        * NEG - NEG  = Sign is defined by overflow.
        */
-      if((op1->sign == false) && (op2->sign == false))
+      if((op1->sign == false) && (op2_copy->sign == false))
       {
         op1->sign = ((overflow != 0) ? false : true);
         if(op1->sign == true)
@@ -1212,7 +1217,7 @@ bcd_op_sub(bcd *op1,
           BCD_PRINT(BCD_DBG_OP_SUB, "%s():       NEGATIVE: %s.\n", __func__, bcd_sig_to_str(sig1));
         }
       }
-      else if((op1->sign == true) && (op2->sign == true))
+      else if((op1->sign == true) && (op2_copy->sign == true))
       {
         op1->sign = (overflow != 0) ? false : true;
         if(op1->sign == true)
@@ -1235,6 +1240,8 @@ bcd_op_sub(bcd *op1,
       op1->char_count        = 0;
       op1->got_decimal_point = false;
     } while(0);
+
+    bcd_delete(op2_copy);
   }
     
   return retcode;
@@ -1764,7 +1771,7 @@ bcd_add_char(bcd *this,
   return retcode;
 }
 
-/* Create an ASCII string the represents the current value of the number.
+/* Create an ASCII string that represents the current value of the number.
  *
  * Input:
  *   this     = A pointer to the bcd object.
