@@ -284,99 +284,94 @@ fp_exp_nth_root_guess(fp_exp *this,
 
   do
   {
-    if((A = bcd_new()) == (bcd *) 0)                                 { break; }
-    if(bcd_copy(this->base, A) == false)                             { break; }
+    if(this == (fp_exp *) 0)                                              { break; }
+    if(guess == (bcd *) 0)                                                { break; }
+
+    if((A = bcd_new()) == (bcd *) 0)                                      { break; }
+    if(bcd_copy(this->base, A) == false)                                  { break; }
 
     uint64_t n_int = this->exp_denominator;
-    if((n_f = bcd_new()) == (bcd *) 0)                               { break; }
-    if(bcd_import(n_f, this->exp_denominator) == false)              { break; }
+    if((n_f = bcd_new()) == (bcd *) 0)                                    { break; }
+    if(bcd_import(n_f, this->exp_denominator) == false)                   { break; }
 
-    if((X_k = bcd_new()) == (bcd *) 0)                               { break; }
-    if(bcd_import(X_k, 1) == false)                                  { break; }
+    if((X_k = bcd_new()) == (bcd *) 0)                                    { break; }
+    if(bcd_import(X_k, 1) == false)                                       { break; }
 
-    if((part1          = bcd_new()) == (bcd *) 0)                    { break; }
-    if((part2          = bcd_new()) == (bcd *) 0)                    { break; }
-    if((part3          = bcd_new()) == (bcd *) 0)                    { break; }
-    if((part4          = bcd_new()) == (bcd *) 0)                    { break; }
-    if((delta_X_k      = bcd_new()) == (bcd *) 0)                    { break; }
-    if((delta_X_k_prev = bcd_new()) == (bcd *) 0)                    { break; }
+    if((part1          = bcd_new()) == (bcd *) 0)                         { break; }
+    if((part2          = bcd_new()) == (bcd *) 0)                         { break; }
+    if((part3          = bcd_new()) == (bcd *) 0)                         { break; }
+    if((part4          = bcd_new()) == (bcd *) 0)                         { break; }
+    if((delta_X_k      = bcd_new()) == (bcd *) 0)                         { break; }
+    if((delta_X_k_prev = bcd_new()) == (bcd *) 0)                         { break; }
 
-    if(bcd_import(delta_X_k_prev, 0) == false)                       { break; }
+    if(bcd_import(delta_X_k_prev, 0) == false)                            { break; }
 
-    {
-      const char *str1 = bcd_get_dbg_info(A);
-      const char *str2 = bcd_get_dbg_info(n_f);
-      const char *str3 = bcd_get_dbg_info(X_k);
-      const char *str4 = bcd_get_dbg_info(part1);
-      DBG_PRINT("%s(): START: A %s: n %s: X_k %s: part1 %s\n", __func__, str1, str2, str3, str4);
-    }
+    /* Solve the nth root (see description above).
+     *
+     *                       --------PART__4--------
+     *                       -----PART__3----
+     *             PART__1         -PART__2-
+     * Delta X_k = (1 / n) * ((A / X_k^(n-1)) - X_k); X_k+1 = X_k + Delta X_k.
+     */
+    if(bcd_import(part1, 1) == false)                                     { break; }
+    if(bcd_op_div(part1, n_f) == false)                                   { break; }
+    DBG_PRINT("%s(): START: A %s: n %s: X_k %s: part1 %s\n", __func__,
+              bcd_get_dbg_info(A),
+              bcd_get_dbg_info(n_f),
+              bcd_get_dbg_info(X_k),
+              bcd_get_dbg_info(part1));
 
-    /* Solve the nth root (see description above). */
     int x;
     for(x = 0; x < 1000; x++)
     {
-      /*                       --------PART__4--------
-       *                       -----PART__3----
-       *             PART__1         -PART__2-
-       * Delta X_k = (1 / n) * ((A / X_k^(n-1)) - X_k); X_k+1 = X_k + Delta X_k.
-       */
-      if(bcd_import(part1, 1) == false)                              { break; }
-      if(bcd_op_div(part1, n_f) == false)                            { break; }
+      if(fp_exp_integer_exp(X_k, (n_int - 1), part2) == false)            { break; }
 
-      if(fp_exp_integer_exp(X_k, (n_int - 1), part2) == false)       { break; }
+      if(bcd_copy(A, part3) == false)                                     { break; }
+      if(bcd_op_div(part3, part2) == false)                               { break; }
+      DBG_PRINT("%s(): %s / %s = %s\n", __func__,
+                bcd_get_dbg_info(A),
+                bcd_get_dbg_info(part2),
+                bcd_get_dbg_info(part3));
 
-      if(bcd_copy(A, part3) == false)                                { break; }
-      if(bcd_op_div(part3, part2) == false)                          { break; }
-      {
-        const char *str1 = bcd_get_dbg_info(A);
-        const char *str2 = bcd_get_dbg_info(part2);
-        const char *str3 = bcd_get_dbg_info(part3);
-        DBG_PRINT("%s(): %s / %s = %s\n", __func__, str1, str2, str3);
-      }
+      if(bcd_copy(part3, part4) == false)                                 { break; }
+      if(bcd_op_sub(part4, X_k) == false)                                 { break; }
+      DBG_PRINT("%s(): %s - %s = %s\n", __func__,
+                bcd_get_dbg_info(part3),
+                bcd_get_dbg_info(X_k),
+                bcd_get_dbg_info(part4));
 
-      if(bcd_copy(part3, part4) == false)                            { break; }
-      if(bcd_op_sub(part4, X_k) == false)                            { break; }
-      {
-        const char *str1 = bcd_get_dbg_info(part3);
-        const char *str2 = bcd_get_dbg_info(X_k);
-        const char *str3 = bcd_get_dbg_info(part4);
-        DBG_PRINT("%s(): %s - %s = %s\n", __func__, str1, str2, str3);
-      }
+      if(bcd_copy(part1, delta_X_k) == false)                             { break; }
+      if(bcd_op_mul(delta_X_k, part4) == false)                           { break; }
+      DBG_PRINT("%s(): %s * %s = %s\n", __func__,
+                bcd_get_dbg_info(part1),
+                bcd_get_dbg_info(part4),
+                bcd_get_dbg_info(delta_X_k));
 
-      if(bcd_copy(part1, delta_X_k) == false)                        { break; }
-      if(bcd_op_mul(delta_X_k, part4) == false)                      { break; }
-      {
-        const char *str1 = bcd_get_dbg_info(part1);
-        const char *str2 = bcd_get_dbg_info(part4);
-        const char *str3 = bcd_get_dbg_info(delta_X_k);
-        DBG_PRINT("%s(): %s * %s = %s\n", __func__, str1, str2, str3);
-      }
-
-      {
-        const char *str1 = bcd_get_dbg_info(delta_X_k);
-        const char *str2 = bcd_get_dbg_info(delta_X_k_prev);
-        DBG_PRINT("%s(): %4d: Compare %s vs %s\n", __func__, x, str1, str2);
-      }
+      DBG_PRINT("%s(): %4d: Compare %s vs %s\n", __func__, x,
+                bcd_get_dbg_info(delta_X_k),
+                bcd_get_dbg_info(delta_X_k_prev));
       if(bcd_cmp(delta_X_k, delta_X_k_prev) == 0)
       {
         break;
       }
-      if(bcd_copy(delta_X_k, delta_X_k_prev) == false)               { break; }
 
-      if(bcd_op_add(X_k, delta_X_k) == false)                        { break; }
-      if(bcd_copy(X_k, guess) == false)                              { break; }
+      if(bcd_copy(delta_X_k, delta_X_k_prev) == false)                    { break; }
+      if(bcd_op_add(X_k, delta_X_k) == false)                             { break; }
+      if(bcd_copy(X_k, guess) == false)                                   { break; }
     }
 
     /* The guess is always positive. */
-    if((zero = bcd_new()) == (bcd *) 0)                              { break; }
-    if(bcd_import(zero, 0) == false)                                 { break; }
+    if((zero = bcd_new()) == (bcd *) 0)                                   { break; }
+    if(bcd_import(zero, 0) == false)                                      { break; }
     if(bcd_cmp(guess, zero) < 0)
     {
-      if((guess_tmp = bcd_new()) == (bcd *) 0)                       { break; }
-      if(bcd_copy(zero, guess_tmp) == false)                         { break; }
-      if(bcd_op_sub(guess_tmp, guess) == false)                      { break; }
-      if(bcd_copy(guess_tmp, guess) == false)                        { break; }
+      if((guess_tmp = bcd_new()) == (bcd *) 0)                            { break; }
+      if(bcd_copy(zero, guess_tmp) == false)                              { break; }
+      if(bcd_op_sub(guess_tmp, guess) == false)                           { break; }
+      if(bcd_copy(guess_tmp, guess) == false)                             { break; }
     }
+
+    DBG_PRINT("%s(): guess %s\n", __func__, bcd_get_dbg_info(guess));
 
     retcode = true;
   } while(0);
@@ -559,9 +554,9 @@ fp_exp_calc(fp_exp *this)
       DBG_PRINT("%s(): nth_root: this->base %s: this->exp_denominator %lld: guess %s\n",
                  __func__, buf1, this->exp_denominator, buf2);
 
-      if(bcd_to_str(guess,        buf1, sizeof(buf1)) == false)                        { break; }
-      if(bcd_to_str(this->result, buf2, sizeof(buf1)) == false)                        { break; }
       if(fp_exp_integer_exp(guess, this->exp_numerator, this->result) == false)        { break; }
+      if(bcd_to_str(guess,        buf1, sizeof(buf1)) == false)                        { break; }
+      if(bcd_to_str(this->result, buf2, sizeof(buf2)) == false)                        { break; }
       DBG_PRINT("%s(): exp: guess %s: this->exp_numerator %lld: this->result %s\n",
                   __func__, buf1, this->exp_numerator, buf2);
 
@@ -664,9 +659,9 @@ fp_exp_test(void)
       fp_exp_test *t = &tests[x];
       printf("%s: %s ^ %s\n", t->name, t->base, t->exp);
 
-      if((base   = bcd_new()) == (bcd *) 0)               { break; }
-      if((exp    = bcd_new()) == (bcd *) 0)               { break; }
-      if((result = bcd_new()) == (bcd *) 0)               { break; }
+      if((base   = bcd_new()) == (bcd *) 0)                      { break; }
+      if((exp    = bcd_new()) == (bcd *) 0)                      { break; }
+      if((result = bcd_new()) == (bcd *) 0)                      { break; }
 
       /* Load the base and exponent into bcd objects.  We're not testing the bcd
        * class here, so don't worry too much about error checking. */
@@ -677,14 +672,14 @@ fp_exp_test(void)
       }
 
       fp_exp *obj;
-      if((obj = fp_exp_new(base, exp)) == (fp_exp *) 0)   { break; }
+      if((obj = fp_exp_new(base, exp)) == (fp_exp *) 0)          { break; }
 
-      if(fp_exp_calc(obj) == false)                       { break; }
-      if(fp_exp_get_result(obj, result) == false)         { break; }
-      if(fp_exp_delete(obj) == false)                     { break; }
+      if(fp_exp_calc(obj) == false)                              { break; }
+      if(fp_exp_get_result(obj, result) == false)                { break; }
+      if(fp_exp_delete(obj) == false)                            { break; }
 
       char buf1[1024];
-      if(bcd_to_str(result, buf1, sizeof(buf1)) == false) { break; }
+      if(bcd_to_str(result, buf1, sizeof(buf1)) == false)        { break; }
       printf("  result = %s: t->result %s: ", buf1, t->result);
 
       if(strcmp(buf1, t->result) == 0)
@@ -697,11 +692,11 @@ fp_exp_test(void)
         break;
       }
 
-      if(bcd_delete(base)   != true)                      { break; }
+      if(bcd_delete(base)   != true)                             { break; }
       base   = (bcd *) 0;
-      if(bcd_delete(exp)    != true)                      { break; }
+      if(bcd_delete(exp)    != true)                             { break; }
       exp    = (bcd *) 0;
-      if(bcd_delete(result) != true)                      { break; }
+      if(bcd_delete(result) != true)                             { break; }
       result = (bcd *) 0;
     }
   } while(0);

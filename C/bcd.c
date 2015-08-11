@@ -1292,10 +1292,10 @@ bcd_op_mul(bcd *op1,
       bool carry = false;
 
       int b_digit;
-      for(b_digit = BCD_NUM_DIGITS; b_digit > 0; b_digit--)
+      for(b_digit = BCD_NUM_DIGITS_INTERNAL; b_digit > 0; b_digit--)
       {
         int a_digit;
-        for(a_digit = BCD_NUM_DIGITS; a_digit > 0; a_digit--)
+        for(a_digit = BCD_NUM_DIGITS_INTERNAL; a_digit > 0; a_digit--)
         {
           /* 1. Get the 2 digits into a_byte and b_byte.
            *
@@ -1832,7 +1832,7 @@ bcd_to_str(bcd  *this,
       int significant_digits = bcd_sig_num_digits(&val->significand);
 
       /* This is the first digit after the set of digits that we'll place in
-       * the string.  We'll use this to determine if we need to round up. */
+       * the string.  We'll use it to determine if we need to round up. */
       uint8_t carry_digit = bcd_sig_get_digit(&val->significand, BCD_NUM_DIGITS);
 
       /* Clear the digits that we won't display.  We want the BCD number to be
