@@ -809,9 +809,9 @@ calculator_test(void)
     { "CALC_11", "2^3",             true,  true,       "8"                }, // int ^ int.
     { "CALC_12", "2^3s",            true,  true,       "0.125"            }, // int ^ -int.
     { "CALC_13", "2.34^5",          true,  true,      "70.1583371424"     }, // float ^ int.
-    { "CALC_14", "3^2.5",           true,  true,      "15.5884572681199"  }, // float ^ int.
-    { "CALC_15", "3^12.345",        true,  true, "776,357.74428398"       }, // int ^ float.
-    { "CALC_16", "2.34^5.678",      true,  true,     "124.8554885559"     }, // float ^ float.
+    { "CALC_14", "3^2.5",           true,  true,      "15.5884572681199"  }, // int ^ float.
+    { "CALC_15", "3^12.345",        true,  true, "776,357.7442839795"     }, // int ^ float.
+    { "CALC_16", "2.34^5.678",      true,  true,     "124.855488555961"   }, // float ^ float.
     { "CALC_17", "(10+20)*(30+40", false, false,        ""                }, // Unbalanced parentheses.
     { "CALC_18", "5+(10)",          true,  true,      "15"                }, // Odd use of parentheses.
     { "CALC_19", "200+()*3",        true,  true,     "600"                }, // Odd use of parentheses.

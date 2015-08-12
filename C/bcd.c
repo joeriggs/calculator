@@ -1165,27 +1165,10 @@ bcd_op_sub(bcd *op1,
 
   if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
   {
-    bcd *op2_copy = (bcd *) 0;
-
-    /* op1 - 0 = op1. */
-    if(bcd_sig_is_zero(&op2->significand) == true)
+    do
     {
-      retcode = true;
-    }
+      bcd *op2_copy = (bcd *) 0;
 
-    /* 0 - op2 = -op2. */
-    else if(bcd_sig_is_zero(&op1->significand) == true)
-    {
-      if(bcd_copy(op2, op1) == true)
-      {
-        op1->sign = (op1->sign == true) ? false : true;
-        retcode = true;
-      }
-    }
-
-    /* op1 and op2 are both != 0. */
-    else do
-    {
       if((op2_copy = bcd_new()) == (bcd *) 0) { break; }
       if(bcd_copy(op2, op2_copy) == false)    { break; }
 
@@ -1197,60 +1180,81 @@ bcd_op_sub(bcd *op1,
       /* If the exponents aren't the same, adjust the smaller number up to the other. */
       if((retcode = bcd_make_exponents_equal(sig1, &op1->exponent, sig2, &op2_copy->exponent)) != true) break;
 
-      /* 10s complement (as required):
-       * POS - POS  = 10's complement b.
-       * POS - NEG  = NO 10's complement.
-       * NEG - POS  = NO 10's complement.
-       * NEG - NEG  = 10's complement a.
-       */
-      if((op1->sign == false) && (op2_copy->sign == false)) { if((retcode = bcd_tens_complement(sig2, sig2)) == false) break; }
-      if((op1->sign ==  true) && (op2_copy->sign ==  true)) { if((retcode = bcd_tens_complement(sig1, sig1)) == false) break; }
-      BCD_PRINT(BCD_DBG_OP_SUB, "%s() 10'S COMPLEMENT: %s, %s\n", __func__, bcd_sig_to_str(sig1), bcd_sig_to_str(sig2));
-
-      uint8_t overflow;
-      if((retcode = bcd_significand_add(sig1, sig2, sig1, NULL, &overflow)) != true) break;
-      BCD_PRINT(BCD_DBG_OP_SUB, "%s():         RESULT: %s CARRY: %d.\n", __func__, bcd_sig_to_str(sig1), overflow);
-
-      /* 10s complement (as required) and set the result sign:
-       * POS - POS  = Sign is defined by overflow.
-       * POS - NEG  = Sign is positive.
-       * NEG - POS  = Sign is negative.
-       * NEG - NEG  = Sign is defined by overflow.
-       */
-      if((op1->sign == false) && (op2_copy->sign == false))
+      /* op1 - 0 = op1. */
+      if(bcd_sig_is_zero(&op2->significand) == true)
       {
-        op1->sign = ((overflow != 0) ? false : true);
-        if(op1->sign == true)
+        retcode = true;
+      }
+
+      /* 0 - op2 = -op2. */
+      else if(bcd_sig_is_zero(&op1->significand) == true)
+      {
+        if(bcd_copy(op2, op1) == true)
         {
-          if((retcode = bcd_tens_complement(sig1, &op1->significand)) != true) break;
-          BCD_PRINT(BCD_DBG_OP_SUB, "%s():       NEGATIVE: %s.\n", __func__, bcd_sig_to_str(sig1));
+          op1->sign = (op1->sign == true) ? false : true;
+          retcode = true;
         }
       }
-      else if((op1->sign == true) && (op2_copy->sign == true))
-      {
-        op1->sign = (overflow != 0) ? false : true;
-        if(op1->sign == true)
-        {
-          if((retcode = bcd_tens_complement(sig1, &op1->significand)) != true) break;
-          BCD_PRINT(BCD_DBG_OP_SUB, "%s():       NEGATIVE: %s.\n", __func__, bcd_sig_to_str(sig1));
-        }
-      }
+
+      /* op1 and op2 are both != 0. */
       else
       {
-        op1->sign = (op1->sign == false) ? false : true;
+        /* 10s complement (as required):
+         * POS - POS  = 10's complement b.
+         * POS - NEG  = NO 10's complement.
+         * NEG - POS  = NO 10's complement.
+         * NEG - NEG  = 10's complement a.
+         */
+        if((op1->sign == false) && (op2_copy->sign == false)) { if((retcode = bcd_tens_complement(sig2, sig2)) == false) break; }
+        if((op1->sign ==  true) && (op2_copy->sign ==  true)) { if((retcode = bcd_tens_complement(sig1, sig1)) == false) break; }
+        BCD_PRINT(BCD_DBG_OP_SUB, "%s() 10'S COMPLEMENT: %s, %s\n", __func__, bcd_sig_to_str(sig1), bcd_sig_to_str(sig2));
+
+        uint8_t overflow;
+        if((retcode = bcd_significand_add(sig1, sig2, sig1, NULL, &overflow)) != true) break;
+        BCD_PRINT(BCD_DBG_OP_SUB, "%s():         RESULT: %s CARRY: %d.\n", __func__, bcd_sig_to_str(sig1), overflow);
+
+        /* 10s complement (as required) and set the result sign:
+         * POS - POS  = Sign is defined by overflow.
+         * POS - NEG  = Sign is positive.
+         * NEG - POS  = Sign is negative.
+         * NEG - NEG  = Sign is defined by overflow.
+         */
+        if((op1->sign == false) && (op2_copy->sign == false))
+        {
+          op1->sign = ((overflow != 0) ? false : true);
+          if(op1->sign == true)
+          {
+            if((retcode = bcd_tens_complement(sig1, &op1->significand)) != true) break;
+            BCD_PRINT(BCD_DBG_OP_SUB, "%s():       NEGATIVE: %s.\n", __func__, bcd_sig_to_str(sig1));
+          }
+        }
+        else if((op1->sign == true) && (op2_copy->sign == true))
+        {
+          op1->sign = (overflow != 0) ? false : true;
+          if(op1->sign == true)
+          {
+            if((retcode = bcd_tens_complement(sig1, &op1->significand)) != true) break;
+            BCD_PRINT(BCD_DBG_OP_SUB, "%s():       NEGATIVE: %s.\n", __func__, bcd_sig_to_str(sig1));
+          }
+        }
+        else
+        {
+          op1->sign = (op1->sign == false) ? false : true;
+        }
+
+        /* Clear out any leading zeroes in the significand. */
+        if((retcode = bcd_sig_remove_leading_zeroes(sig1, &op1->exponent)) != true) break;
+        BCD_PRINT(BCD_DBG_OP_SUB, "%s():          SHIFT: %s %d %d.\n", __func__, bcd_sig_to_str(sig1), op1->exponent, op1->sign);
+
+        /* Done.  Set the object to reflect the fact that we calculated the value.
+         * This is no longer data that came in through bcd_add_char(). */
+        op1->char_count        = 0;
+        op1->got_decimal_point = false;
       }
 
-      /* Clear out any leading zeroes in the significand. */
-      if((retcode = bcd_sig_remove_leading_zeroes(sig1, &op1->exponent)) != true) break;
-      BCD_PRINT(BCD_DBG_OP_SUB, "%s():          SHIFT: %s %d %d.\n", __func__, bcd_sig_to_str(sig1), op1->exponent, op1->sign);
+      bcd_delete(op2_copy);
 
-      /* Done.  Set the object to reflect the fact that we calculated the value.
-       * This is no longer data that came in through bcd_add_char(). */
-      op1->char_count        = 0;
-      op1->got_decimal_point = false;
     } while(0);
-
-    bcd_delete(op2_copy);
   }
     
   return retcode;

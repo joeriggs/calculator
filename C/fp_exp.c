@@ -241,6 +241,8 @@ fp_exp_to_fraction(fp_exp *this)
  *
  * Taken from http://en.wikipedia.org/wiki/Nth_root_algorithm
  *
+ * We're calculating the "n"th root of "A".
+ *
  * 1. Make an initial guess X_k.
  *
  * 2. X_k+1 = (1 / n) * ( (n - 1) * X_k + (A / X_k^(n-1))).
@@ -322,32 +324,38 @@ fp_exp_nth_root_guess(fp_exp *this,
               bcd_get_dbg_info(part1));
 
     int x;
-    for(x = 0; x < 1000; x++)
+    for(x = 0; x < 100000; x++)
     {
+      DBG_PRINT("%s(): %4d\n", __func__, x);
+
       if(fp_exp_integer_exp(X_k, (n_int - 1), part2) == false)            { break; }
+      DBG_PRINT("%s(): PART2: %s ^ %lld = %s\n", __func__,
+                bcd_get_dbg_info(X_k),
+                (n_int - 1),
+                bcd_get_dbg_info(part2));
 
       if(bcd_copy(A, part3) == false)                                     { break; }
       if(bcd_op_div(part3, part2) == false)                               { break; }
-      DBG_PRINT("%s(): %s / %s = %s\n", __func__,
+      DBG_PRINT("%s(): PART3: %s / %s = %s\n", __func__,
                 bcd_get_dbg_info(A),
                 bcd_get_dbg_info(part2),
                 bcd_get_dbg_info(part3));
 
       if(bcd_copy(part3, part4) == false)                                 { break; }
       if(bcd_op_sub(part4, X_k) == false)                                 { break; }
-      DBG_PRINT("%s(): %s - %s = %s\n", __func__,
+      DBG_PRINT("%s(): PART4: %s - %s = %s\n", __func__,
                 bcd_get_dbg_info(part3),
                 bcd_get_dbg_info(X_k),
                 bcd_get_dbg_info(part4));
 
       if(bcd_copy(part1, delta_X_k) == false)                             { break; }
       if(bcd_op_mul(delta_X_k, part4) == false)                           { break; }
-      DBG_PRINT("%s(): %s * %s = %s\n", __func__,
+      DBG_PRINT("%s(): Delta X_k: %s * %s = %s\n", __func__,
                 bcd_get_dbg_info(part1),
                 bcd_get_dbg_info(part4),
                 bcd_get_dbg_info(delta_X_k));
 
-      DBG_PRINT("%s(): %4d: Compare %s vs %s\n", __func__, x,
+      DBG_PRINT("%s(): Compare %s vs %s\n", __func__,
                 bcd_get_dbg_info(delta_X_k),
                 bcd_get_dbg_info(delta_X_k_prev));
       if(bcd_cmp(delta_X_k, delta_X_k_prev) == 0)
@@ -358,8 +366,8 @@ fp_exp_nth_root_guess(fp_exp *this,
       if(bcd_copy(delta_X_k, delta_X_k_prev) == false)                    { break; }
       if(bcd_op_add(X_k, delta_X_k) == false)                             { break; }
       if(bcd_copy(X_k, guess) == false)                                   { break; }
+      DBG_PRINT("%s(): guess = %s\n", __func__, bcd_get_dbg_info(guess));
     }
-
     /* The guess is always positive. */
     if((zero = bcd_new()) == (bcd *) 0)                                   { break; }
     if(bcd_import(zero, 0) == false)                                      { break; }
