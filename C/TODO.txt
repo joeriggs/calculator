@@ -4,8 +4,6 @@
 - Basic implementation:
 
 - Bugs:
-  - Exponentiation is broken due to:
-    - Rounding problems.
   - Switching between BCD and HEX is broken.
     - Hex needs testing.  Hasn't been tested since BCD was added.
 
@@ -36,6 +34,8 @@
     - Add a status indicator as "-- hex -- 8-bit -->  <--" to console.
   - Should we disable 's' in Hex mode?  Or should we create a signed/unsigned
     option for Hex mode?
+  - Revisit fp_exp.c to see if we can find a better algorithm.  The n-th power
+    guessing algorithm can take a very long time.
 
 - Cleanup, refactoring, and beautification:
   - Change classes so you can say "stack this" instead of "stack *this".

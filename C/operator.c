@@ -21,29 +21,30 @@ typedef struct operator_property {
   const char             value;
   const char            *name;
   operator_type          op_type;
+  operator_special_type  op_special_type;
   int                    input_precedence;
   int                    stack_precedence;
   operand_binary_op      binary_op_exec;
   operand_unary_op       unary_op_exec;
 } operator_property;
 static operator_property operator_properties[] = {
-  { '(',  "(",    op_type_none,    0, 99, 0, 0 }, // Open parentheses
-  { ')',  ")",    op_type_none,   98,  0, 0, 0 }, // Open parentheses
-  { '+',  "+",    op_type_binary,  9,  8, operand_op_add, 0 }, // Addition
-  { '-',  "-",    op_type_binary,  9,  8, operand_op_sub, 0 }, // Subtraction
-  { '*',  "*",    op_type_binary,  7,  6, operand_op_mul, 0 }, // Multiplication
-  { '/',  "/",    op_type_binary,  7,  6, operand_op_div, 0 }, // Division
-  { '^',  "^",    op_type_binary,  4,  5, operand_op_exp, 0 }, // Exponentiation
-  { '&',  "AND",  op_type_binary, 17, 16, operand_op_and, 0 }, // Bitwise AND
-  { '|',  "OR",   op_type_binary, 21, 20, operand_op_or,  0 }, // Bitwise OR
-  { 'x',  "XOR",  op_type_binary, 19, 18, operand_op_xor, 0 }, // Bitwise XOR
-  { '~',  "NOT",  op_type_unary,   3,  2, 0, operand_op_not }, // Bitwise Negate
-  { '%',  "MOD",  op_type_binary,  7,  6, 0, 0 }, // Modulus
-  { '<',  "SHL",  op_type_binary, 11, 10, 0, 0 }, // Shift Left
-  { '>',  "SHR",  op_type_binary, 11, 10, 0, 0 }, // Shift Right
-  { 'l',  "ROL",  op_type_binary, 11, 10, 0, 0 }, // Rotate Left
-  { 'r',  "ROR",  op_type_binary, 11, 10, 0, 0 }, // Rotate Right
-  {  0 ,  "",     op_type_none,    0,  0, 0, 0 }
+  { '(',  "(",    op_type_none,   op_special_type_l_paren, 0, 99, 0, 0 }, // Open parentheses
+  { ')',  ")",    op_type_none,   op_special_type_r_paren,98,  0, 0, 0 }, // Open parentheses
+  { '+',  "+",    op_type_binary, op_special_type_none,    9,  8, operand_op_add, 0 }, // Addition
+  { '-',  "-",    op_type_binary, op_special_type_none,    9,  8, operand_op_sub, 0 }, // Subtraction
+  { '*',  "*",    op_type_binary, op_special_type_none,    7,  6, operand_op_mul, 0 }, // Multiplication
+  { '/',  "/",    op_type_binary, op_special_type_none,    7,  6, operand_op_div, 0 }, // Division
+  { '^',  "^",    op_type_binary, op_special_type_none,    4,  5, operand_op_exp, 0 }, // Exponentiation
+  { '&',  "AND",  op_type_binary, op_special_type_none,   17, 16, operand_op_and, 0 }, // Bitwise AND
+  { '|',  "OR",   op_type_binary, op_special_type_none,   21, 20, operand_op_or,  0 }, // Bitwise OR
+  { 'x',  "XOR",  op_type_binary, op_special_type_none,   19, 18, operand_op_xor, 0 }, // Bitwise XOR
+  { '~',  "NOT",  op_type_unary,  op_special_type_none,    3,  2, 0, operand_op_not }, // Bitwise Negate
+  { '%',  "MOD",  op_type_binary, op_special_type_none,    7,  6, 0, 0 }, // Modulus
+  { '<',  "SHL",  op_type_binary, op_special_type_none,   11, 10, 0, 0 }, // Shift Left
+  { '>',  "SHR",  op_type_binary, op_special_type_none,   11, 10, 0, 0 }, // Shift Right
+  { 'l',  "ROL",  op_type_binary, op_special_type_none,   11, 10, 0, 0 }, // Rotate Left
+  { 'r',  "ROR",  op_type_binary, op_special_type_none,   11, 10, 0, 0 }, // Rotate Right
+  {  0 ,  "",     op_type_none,   op_special_type_none,    0,  0, 0, 0 }
 };
 
 /* This is the operator class.  Each object represents a single operator. */
@@ -265,7 +266,7 @@ operator_get_name(operator *this,
  *   this = A pointer to the operator object.
  *
  * Output:
- *   true  = success.  *type is set to the operand type.
+ *   true  = success.  *type is set to the operator type.
  *   false = failure.  *type is set to op_type_none (if it is a valid pointer).
  */
 bool
@@ -284,6 +285,39 @@ operator_get_op_type(operator *this,
     else
     {
       *type = op_type_none;
+    }
+  }
+
+  return retcode;
+}
+
+/* Return the operator special type information.  This is information that the
+ * object owner can use to determine if it needs to perform any special tasks
+ * when it receives the operand.
+ *
+ * Input:
+ *   this = A pointer to the operator object.
+ *
+ * Output:
+ *   true  = success.  *type is set to the operator special type.
+ *   false = failure.  *type is set to op_special_type_none (if it is a valid pointer).
+ */
+bool
+operator_get_op_specialtype(operator *this,
+                            operator_special_type *special_type)
+{
+  bool retcode = false;
+
+  if(special_type != (operator_special_type *) 0)
+  {
+    if(this != (operator *) 0)
+    {
+      *special_type = this->op_prop->op_special_type;
+      retcode = true;
+    }
+    else
+    {
+      *special_type = op_special_type_none;
     }
   }
 

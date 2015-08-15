@@ -4,6 +4,7 @@
  * for a really good description of an infix-to-postfix calculator.
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,11 +44,62 @@ struct calculator {
   /* The operand number base we're configured to use.  This refers to things
    * like base_10 or base_16. */
   operand_base base;
+
+  /* This is the parentheses counter.  It keeps track of the number of
+   * unmatched left parentheses.  The point is to make sure we know how many
+   * open parentheses are currently waiting for a closing parentheses. */
+  uint16_t paren_count;
 };
   
 /******************************************************************************
  ******************************** PRIVATE API *********************************
  *****************************************************************************/
+
+/* This function keeps track of how many parentheses we've received.  The goal
+ * is to allow us to do 2 things:
+ *
+ * 1. Make sure the parentheses are balanced.
+ *
+ * 2. Discard closing parentheses that don't have a matching open parentheses.
+ *
+ * Input:
+ *   this = A pointer to the calculator object.
+ *
+ *   open = True   - We're adding a left parentheses.
+ *          False  - We're adding a right parentheses.
+ *
+ * Output:
+ *   true  = success.  The paren was accepted.  The calculator should keep it.
+ *   false = failure.  The paren was rejected.  The calculator should drop it.
+ */
+static bool
+calculator_add_paren(calculator *this,
+                     bool        open)
+{
+  bool retcode = false;
+
+  if(this != (calculator *) 0)
+  {
+    if(open == true)
+    {
+      if(this->paren_count < 1000)
+      {
+        this->paren_count++;
+        retcode = true;
+      }
+    }
+    else
+    {
+      if(this->paren_count > 0)
+      {
+        this->paren_count--;
+        retcode = true;
+      }
+    }
+  }
+
+  return retcode;
+}
 
 /* This function evaluates the postfix equation.
  *
@@ -198,6 +250,37 @@ calculator_infix2postfix(calculator *this)
   bool retcode = true;
   stack *tmp_stack;
 
+  /* If we need to add closing parentheses (in order to balance out the open and
+   * close parentheses), do it now. */
+  if(this->paren_count > 0)
+  {
+    char dbg_buf[1024];
+    calculator_get_console(this, dbg_buf, sizeof(dbg_buf));
+    DBG_PRINT("%s(): paren_count BEFORE: %d '%s'.\n", __func__, this->paren_count, dbg_buf);
+    while(this->paren_count > 0)
+    {
+      operator *paren_operator;
+      if((paren_operator = operator_new(')')) == (operator *) 0)
+      {
+        break;
+      }
+
+      if((retcode = list_add_tail(this->infix_list, paren_operator, LIST_OBJ_TYPE_OPERATOR)) == false)
+      {
+        operator_delete(paren_operator);
+        break;
+      }
+
+      this->paren_count--;
+    }
+    if((this->paren_count > 0) || (retcode == false))
+    {
+      return false;
+    }
+    calculator_get_console(this, dbg_buf, sizeof(dbg_buf));
+    DBG_PRINT("%s(): paren_count AFTER:  %d '%s'.\n", __func__, this->paren_count, dbg_buf);
+  }
+
   /* Start with an empty stack and a brand new postfix_list. */
   if(this->postfix_list != (list *) 0)
   {
@@ -255,7 +338,8 @@ calculator_infix2postfix(calculator *this)
           }
 
           /* If the operator needs to be processed later, add it to the postfix
-           * expression. */
+           * expression.  This basically means we throw away the parentheses and
+           * we save the unary and binary operators. */
           operator_type op_type;
           if((operator_get_op_type(stk_operator, &op_type) == true) && (op_type != op_type_none))
           {
@@ -457,6 +541,9 @@ calculator_new(void)
 
       /* The default base is decimal (base_10). */
       this->base = operand_base_10;
+
+      /* Start the parentheses counter at zero. */
+      this->paren_count = 0;
     }
 
     else
@@ -677,9 +764,9 @@ calculator_add_char(calculator *this,
       operator *cur_operator = operator_new(c);
       if(cur_operator != (operator *) 0)
       {
-        /* If the result from the previous calculation is immediately ahead
-         * of us, and if this is an operator that doesn't require operands,
-         * then we need to throw the previous result away. */
+        /* If the result from the previous calculation is immediately before
+         * us, and if this is an operator that doesn't require operands, then
+         * we need to throw the previous result away. */
         if((cur_obj != (void *) 0) && (cur_obj_type == LIST_OBJ_TYPE_OPERAND) && (operand_add_char_allowed(cur_obj) == false))
         {
           operator_type op_type;
@@ -694,9 +781,35 @@ calculator_add_char(calculator *this,
           }
         }
 
-        if((retcode = list_add_tail(this->infix_list, cur_operator, LIST_OBJ_TYPE_OPERATOR)) == false)
+        /* Check to see if there is any special processing that needs to be done
+         * on this operator. */
+        bool keep_char = true;
+        operator_special_type special_type;
+        if(operator_get_op_specialtype(cur_operator, &special_type) == false)
         {
-          operator_delete(cur_operator);
+          break;
+        }
+        switch(special_type)
+        {
+        case op_special_type_l_paren:
+          keep_char = calculator_add_paren(this, true);
+          break;
+
+        case op_special_type_r_paren:
+          keep_char = calculator_add_paren(this, false);
+          break;
+
+        case op_special_type_none:
+        default:
+          break;
+        }
+
+        if(keep_char == true)
+        {
+          if((retcode = list_add_tail(this->infix_list, cur_operator, LIST_OBJ_TYPE_OPERATOR)) == false)
+          {
+            operator_delete(cur_operator);
+          }
         }
       }
     }
@@ -812,11 +925,11 @@ calculator_test(void)
     { "CALC_14", "3^2.5",           true,  true,      "15.5884572681199"  }, // int ^ float.
     { "CALC_15", "3^12.345",        true,  true, "776,357.7442839795"     }, // int ^ float.
     { "CALC_16", "2.34^5.678",      true,  true,     "124.855488555961"   }, // float ^ float.
-    { "CALC_17", "(10+20)*(30+40", false, false,        ""                }, // Unbalanced parentheses.
-    { "CALC_18", "5+(10)",          true,  true,      "15"                }, // Odd use of parentheses.
+    { "CALC_17", "(10+20)*(30+40",  true,  true,   "2,100"                }, // Unbalanced parentheses.
+    { "CALC_18", "\b5+(10)",        true,  true,      "15"                }, // Odd use of parentheses.
     { "CALC_19", "200+()*3",        true,  true,     "600"                }, // Odd use of parentheses.
     { "CALC_20", "11*)",           false, false,        ""                }, // Unablanced parentheses.
-    { "CALC_21", "\b7*(2+9",       false, false,        ""                }, // Unablanced parentheses.
+    { "CALC_21", "\b7*(2+9",        true,  true,      "77"                }, // Unablanced parentheses.
     { "CALC_22", "\b2s^.5",        false, false,        ""                }, // Neg base, floating point exp.
 
   };
