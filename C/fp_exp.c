@@ -283,6 +283,9 @@ fp_exp_nth_root_guess(fp_exp *this,
   bcd *delta_X_k_prev = (bcd *) 0;
   bcd *zero           = (bcd *) 0;
   bcd *guess_tmp      = (bcd *) 0;
+  bcd *best_diff      = (bcd *) 0;
+  bcd *test_rslt      = (bcd *) 0;
+  bcd *test_diff      = (bcd *) 0;
 
   do
   {
@@ -306,7 +309,14 @@ fp_exp_nth_root_guess(fp_exp *this,
     if((delta_X_k      = bcd_new()) == (bcd *) 0)                         { break; }
     if((delta_X_k_prev = bcd_new()) == (bcd *) 0)                         { break; }
 
+    if((zero           = bcd_new()) == (bcd *) 0)                         { break; }
+    if(bcd_import(zero, 0) == false)                                      { break; }
+
     if(bcd_import(delta_X_k_prev, 0) == false)                            { break; }
+
+    if((best_diff = bcd_new()) == (bcd *) 0)                              { break; }
+    if((test_rslt = bcd_new()) == (bcd *) 0)                              { break; }
+    if((test_diff = bcd_new()) == (bcd *) 0)                              { break; }
 
     /* Solve the nth root (see description above).
      *
@@ -367,10 +377,64 @@ fp_exp_nth_root_guess(fp_exp *this,
       if(bcd_op_add(X_k, delta_X_k) == false)                             { break; }
       if(bcd_copy(X_k, guess) == false)                                   { break; }
       DBG_PRINT("%s(): guess = %s\n", __func__, bcd_get_dbg_info(guess));
+
+      /* Check to see if we found the answer. */
+      {
+        /* Take our current result and use it as the base to recalculate and see
+         * we found the result.  Another way to look at it is:
+         * We're trying to find: guess = n'th root of A.
+         * We'll test by finding: test_rslt = guess ^ n.
+         * Then we compare test_rslt against A and see how close we are. */
+        if(fp_exp_integer_exp(guess, n_int, test_rslt) == false)          { break; }
+
+        int test_result = bcd_cmp(A, test_rslt);
+        if(test_result == 0)
+        {
+          /* We found the exactly perfect answer.  Drop out and return. */
+          retcode = true;
+          break;
+        }
+        else if(test_result == -1)
+        {
+          /* guess is too high.  Calculate how far off we are. */
+          bcd_copy(test_rslt, test_diff);
+          bcd_op_sub(test_diff, A);
+        }
+        else if(test_result == 1)
+        {
+          /* guess is too low.  Calculate how far off we are. */
+          bcd_copy(A, test_diff);
+          bcd_op_sub(test_diff, test_rslt);
+        }
+
+        /* If this is the first test, just save the test_diff and go again. */
+        if(bcd_cmp(best_diff, zero) == 0)
+        {
+          bcd_copy(test_diff, best_diff);
+        }
+
+        /* Otherwise, check to see if this is the best answer we've calculated
+         * so far.  If it is, save it. */
+        else
+        {
+          test_result = bcd_cmp(test_diff, best_diff);
+          if(test_result == 0)
+          {
+            /* We've seen this answer before.  This is the best we're going to
+             * do.  Return that answer. */
+            retcode = true;
+            break;
+          }
+          else if(test_result == -1)
+          {
+            /* This is our best answer so far.  Save it. */
+            bcd_copy(test_diff, best_diff);
+          }
+        }
+      }
     }
+
     /* The guess is always positive. */
-    if((zero = bcd_new()) == (bcd *) 0)                                   { break; }
-    if(bcd_import(zero, 0) == false)                                      { break; }
     if(bcd_cmp(guess, zero) < 0)
     {
       if((guess_tmp = bcd_new()) == (bcd *) 0)                            { break; }
@@ -384,6 +448,9 @@ fp_exp_nth_root_guess(fp_exp *this,
     retcode = true;
   } while(0);
 
+  bcd_delete(test_diff);
+  bcd_delete(test_rslt);
+  bcd_delete(best_diff);
   bcd_delete(guess_tmp);
   bcd_delete(zero);
   bcd_delete(delta_X_k);
@@ -515,9 +582,10 @@ fp_exp_calc(fp_exp *this)
   bool retcode = false;
 
   bcd *zero      = (bcd *) 0;
-  bcd *one      = (bcd *) 0;
+  bcd *one       = (bcd *) 0;
   bcd *tmp_exp_f = (bcd *) 0;
   bcd *guess     = (bcd *) 0;
+  bcd *exp_tmp   = (bcd *) 0;
 
   do
   {
@@ -527,6 +595,7 @@ fp_exp_calc(fp_exp *this)
     if((one       = bcd_new()) == (bcd *) 0)                                           { break; }
     if((tmp_exp_f = bcd_new()) == (bcd *) 0)                                           { break; }
     if((guess     = bcd_new()) == (bcd *) 0)                                           { break; }
+    if((exp_tmp   = bcd_new()) == (bcd *) 0)                                           { break; }
 
     /* If the exponent is negative, convert to its absolute value and set a flag
      * to remind us it was negative.  x^-n = 1/(x^n), so we just need to get the
@@ -534,8 +603,9 @@ fp_exp_calc(fp_exp *this)
     bool is_neg_exponent = (bcd_cmp(this->exp, zero) < 0);
     if(is_neg_exponent)
     {
-      if(bcd_op_sub(zero, this->exp) == false)                                         { break; }
+      if(bcd_copy(this->exp, exp_tmp) == false)                                        { break; }
       if(bcd_copy(zero, this->exp) == false)                                           { break; }
+      if(bcd_op_sub(this->exp, exp_tmp) == false)                                      { break; }
     }
 
     /* Check to see if the exponent is a whole number.  If it is, then we can do
@@ -550,6 +620,10 @@ fp_exp_calc(fp_exp *this)
 
     else
     {
+      /* At this point we know the exponent is a fraction.  This means the base
+       * must be a positive number.  If it's not, the equation is invalid. */
+     if(bcd_cmp(this->base, zero) < 0)                                                 { break; }
+
       /* Convert the exponent to a fraction (numerator and denominator). */
       if(fp_exp_to_fraction(this) == false)                                            { break; }
 
@@ -579,6 +653,7 @@ fp_exp_calc(fp_exp *this)
     }
   } while(0);
 
+  bcd_delete(exp_tmp);
   bcd_delete(guess);
   bcd_delete(tmp_exp_f);
   bcd_delete(one);
@@ -641,17 +716,17 @@ fp_exp_test(void)
     { "FP_EXP_09", "17"    ,  "21s"     ,                     "1.447346952625563e-26" }, //   Little tougher.
     { "FP_EXP_10", "17"    ,    ".23"   ,                     "1.918683107361833"     },
     { "FP_EXP_11",   ".9"  ,    ".7"    ,                     "0.928901697685371"     },
-    { "FP_EXP_12",   ".63" ,   "8"      ,                     "0.024815578026752"     },
-    { "FP_EXP_13",  "2"    ,   "2.3456s",                     "0.196745153116215"     },
-    { "FP_EXP_14",  "2.34" ,   "3.45"   ,                    "18.784286696359032"     },
-    { "FP_EXP_15",  "2"    ,   "3.5"    ,                    "11.313708498984754"     },
-    { "FP_EXP_16",  "2"    ,   "3.6"    ,                    "12.125732532083205"     },
+    { "FP_EXP_12",   ".63" ,   "8"      ,                     "0.0248155780267521"    },
+    { "FP_EXP_13",  "2"    ,   "2.3456s",                     "0.1967451531162147"    },
+    { "FP_EXP_14",  "2.34" ,   "3.45"   ,                    "18.78428669635901"      },
+    { "FP_EXP_15",  "2"    ,   "3.5"    ,                    "11.31370849898476"      },
+    { "FP_EXP_16",  "2"    ,   "3.6"    ,                    "12.12573253208318"      },
     { "FP_EXP_17",  "2"    ,   "0"      ,                     "1"                     }, // zero exponent.
     { "FP_EXP_18",  "0"    ,   "3"      ,                     "0"                     }, // zero base.
     { "FP_EXP_19",  "0"    ,   "0"      ,                     "1"                     }, // zero base and exponent.
     { "FP_EXP_20",  "2"    , "199"      ,                     "8.034690221294951e+59" }, // big exponent.
     { "FP_EXP_21", "25.43" ,   "1"      ,                    "25.43"                  }, // X ^ 1 = X.
-    { "FP_EXP_22",  "3"    ,  "12.345"  ,               "776,357.74428398"            }, // Stolen from calculator.c.
+    { "FP_EXP_22",  "3"    ,  "12.345"  ,               "776,357.7442839795"          }, // Stolen from calculator.c.
   };
   size_t tests_size = (sizeof(tests) / sizeof(fp_exp_test));
 
@@ -707,6 +782,9 @@ fp_exp_test(void)
       if(bcd_delete(result) != true)                             { break; }
       result = (bcd *) 0;
     }
+
+    retcode = true;
+
   } while(0);
 
   bcd_delete(result);

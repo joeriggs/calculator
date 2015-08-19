@@ -30,6 +30,7 @@
 #define BCD_DBG_OP_DIV               0x0800
 #define BCD_DBG_ADD_CHAR             0x1000
 #define BCD_DBG_TO_STR               0x2000
+#define BCD_DBG_CMP                  0x4000
 
 #define BCD_DBG_PRINT_FLAGS (0)
 #define BCD_PRINT(FLAG, argc...) { if(FLAG & BCD_DBG_PRINT_FLAGS) { DBG_PRINT(argc); } }
@@ -1181,7 +1182,7 @@ bcd_op_sub(bcd *op1,
       if((retcode = bcd_make_exponents_equal(sig1, &op1->exponent, sig2, &op2_copy->exponent)) != true) break;
 
       /* op1 - 0 = op1. */
-      if(bcd_sig_is_zero(&op2->significand) == true)
+      if(bcd_sig_is_zero(&op2_copy->significand) == true)
       {
         retcode = true;
       }
@@ -1972,6 +1973,9 @@ bcd_cmp(bcd *obj1,
 {
   int retval = 0;
 
+  BCD_PRINT(BCD_DBG_CMP, "%s(): %s vs %s.\n", __func__,
+            bcd_sig_to_str(&obj1->significand), bcd_sig_to_str(&obj2->significand));
+
   if( (obj1 != (bcd *) 0) && (obj2 != (bcd *) 0) )
   {
     /* Negatives are always less than positives. */
@@ -1999,6 +2003,7 @@ bcd_cmp(bcd *obj1,
         /* Compare 2 positive numbers. */
         if((obj1->sign == false) && (obj2->sign == false))
         {
+          BCD_PRINT(BCD_DBG_CMP, "%s(): Comparing positive numbers.\n", __func__);
           if(bcd_op_sub(tmp_obj1, tmp_obj2) == true)
           {
             if(bcd_sig_is_zero(&tmp_obj1->significand)) { retval =  0; }
