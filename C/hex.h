@@ -31,6 +31,10 @@ bool hex_add_char(hex *this, char c);
 
 bool hex_to_str(hex  *this, char  *buf, size_t buf_size);
 
+bool hex_import(hex *this, int64_t src);
+
+bool hex_export(hex *this, int64_t *dst);
+
 /********************************** TEST API **********************************/
 
 #if defined(TEST)

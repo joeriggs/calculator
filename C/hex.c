@@ -345,6 +345,76 @@ hex_to_str(hex  *this,
 
   return retcode;
 }
+
+/* Import a signed integer value into this object.  Note that this member
+ * doesn't allow you to import an IEEE floating point value.
+ *
+ * Input:
+ *   this     = A pointer to the hex object.
+ *
+ *   src      = A signed integer value to use to seed the object.  If there is
+ *              a value already loaded into this object, it will be erased.
+ *
+ *              NOTE: The hex class doesn't support signed values.  So if src
+ *              is negative, we'll set this to zero.
+ *
+ * Output:
+ *   true  = success.  this has been imported.
+ *   false = failure.  The contents of this is undefined.
+ */
+bool
+hex_import(hex     *this,
+           int64_t  src)
+{
+  bool retcode = false;
+
+  if(this != (hex *) 0)
+  {
+    /* If src is negative, set it to zero.  We don't support negative hex. */
+    if(src < 0)
+    {
+      src = 0;
+    }
+
+    this->val = src;
+    retcode = true;
+  }
+
+  return retcode;
+}
+
+/* Export the value of this object to a signed integer.  Note that this member
+ * doesn't allow you to export to an IEEE floating point value.
+ *
+ * Input:
+ *   this     = A pointer to the hex object.
+ *
+ *   dst      = A pointer to a signed integer value that will receive the value
+ *              of this.
+ *
+ *              NOTE: If this is a larger value than will fit into *dst, then
+ *              we'll set *dst to zero.
+ *
+ * Output:
+ *   true  = success.  this has been exported.
+ *   false = failure.  The contents of dst is undefined.
+ */
+bool
+hex_export(hex     *this,
+           int64_t *dst)
+{
+  bool retcode = false;
+
+  if((this != (hex *) 0) && (dst != (int64_t *) 0))
+  {
+    *dst = (this->val & 0x80000000) ? 0 : this->val;
+    
+    retcode = true;
+  }
+
+  return retcode;
+}
+
 /******************************************************************************
  ********************************** TEST API **********************************
  *****************************************************************************/

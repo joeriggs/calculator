@@ -45,6 +45,44 @@ struct operand {
  ********************************* PUBLIC OPS *********************************
  *****************************************************************************/
 
+#ifdef DEBUG
+/* Return a string that represents the current number base.  Note that this
+ * function is for debugging purposes.
+ *
+ * Input:
+ *   base = The enumerated base type.
+ *
+ * Output:
+ *   Returns a pointer to a string that contains the name of the base.
+ */
+static inline const char *
+operand_base_to_str(operand_base base)
+{
+  const char *base_name;
+
+  switch(base)
+  {
+  case operand_base_10:
+    base_name = "BASE 10";
+    break;
+
+  case operand_base_16:
+    base_name = "BASE 16";
+    break;
+
+  case operand_base_unknown:
+    base_name = "UNKNOWN";
+    break;
+
+  default:
+    base_name = "INVALID";
+    break;
+  }
+
+  return base_name;
+}
+#endif // DEBUG
+
 /* This is the addition function.
  *
  * Input:
@@ -543,18 +581,28 @@ operand_set_base(operand *this,
 
   if(this != (operand *) 0)
   {
+    DBG_PRINT("%s(): this->base %s: base %s.\n", __func__, 
+              operand_base_to_str(this->base), operand_base_to_str(base));
     if(this->base != base)
     {
+      int64_t new_num;
+
       switch(base)
       {
       case operand_base_10:
         this->base = base;
-        retcode = true;
+        if(hex_export(this->hexnum, &new_num) == true)
+        {
+          retcode = bcd_import(this->decnum, new_num);
+        }
         break;
       
       case operand_base_16:
         this->base = base;
-        retcode = true;
+        if(bcd_export(this->decnum, &new_num) == true)
+        {
+          retcode = hex_import(this->hexnum, new_num);
+        }
         break;
 
       default:
