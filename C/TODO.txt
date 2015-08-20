@@ -8,11 +8,6 @@
     - Hex needs testing.  Hasn't been tested since BCD was added.
 
 - Enhanced implementation:
-  - Exponentiation.
-    - Add bcd_is_whole_number().
-    - Add bcd_is_zero().
-  - Parentheses:
-    - Balance checking.
   - Hex operators:
     - Modulus
     - Shift Left
@@ -39,6 +34,8 @@
 
 - Cleanup, refactoring, and beautification:
   - Change classes so you can say "stack this" instead of "stack *this".
+    - Make sure we can create an object without calling new/delete.  This
+      makes it easier to deal with shortterm variables.
   - Change raw_stdin class to "console" class.
     - Add the stderr display stuff as a method.
     - Add signal handler for CTRL-C.
@@ -47,7 +44,7 @@
   - Create extremely robust TDD-style tests for each class.
 
 - System Testing:
-  - Run a memory leak tool to check for leaks.  For example:
+  - Run a memory leak tool (valgrind) to check for leaks.  For example:
     - Check to make sure we're deleting the operator and operand objects when
       we're done with them in postfix.  Probably need to write a loop test that
       will run overnight and check for memory leaks.  An alternative would be

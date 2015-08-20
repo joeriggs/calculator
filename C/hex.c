@@ -413,7 +413,7 @@ hex_test(void)
     { "HEX_MUL_01",                "1",     "0", hex_op_mul,                "0" },
     { "HEX_MUL_02",             "1234",  "5678", hex_op_mul,          "6260060" },
     { "HEX_MUL_03", "1000000000000000",    "10", hex_op_mul,                "0" },
-    { "HEX_DIV_01",        "136bdbca4",  "1234", hex_op_div,           "11040D" },
+    { "HEX_DIV_01",        "136bdbca4",  "1234", hex_op_div,           "11121D" },
     { "HEX_DIV_02",            "fffff", "fffff", hex_op_div,                "1" },
   };
   size_t hex_math_test_size = (sizeof(math_tests) / sizeof(hex_math_test));

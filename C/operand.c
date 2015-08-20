@@ -728,13 +728,14 @@ operand_test(void)
    * functionality of the operand class.  We're checking to make sure it can
    * handle the types of numbers that we support. */
   typedef struct operand_test {
-    const char  *str;
+    const char  *src;
+    const char  *dst;
     operand_base base;
   } operand_test;
   operand_test tests[] = {
-    { "123",     operand_base_10 }, // Simple integer value.
-    { "123000",  operand_base_10 }, // Integer with trailing zeroes.
-    { "123.456", operand_base_10 }, // Simple floating point value.
+    {    "123",         "123",     operand_base_10 }, // Simple integer value.
+    { "123000",     "123,000",     operand_base_10 }, // Integer with trailing zeroes.
+    {    "123.456",     "123.456", operand_base_10 }, // Simple floating point value.
   };
   size_t operand_test_size = (sizeof(tests) / sizeof(operand_test));
 
@@ -742,17 +743,17 @@ operand_test(void)
   for(x = 0; x < operand_test_size; x++)
   {
     operand_test *t = &tests[x];
-    printf("  %s\n", t->str);
+    printf("  %s\n", t->src);
 
     DBG_PRINT("operand_new()\n");
     operand *this;
     if((this = operand_new(t->base)) == (operand *) 0)               return false;
 
-    const char *str = t->str;
-    while(*str)
+    const char *src = t->src;
+    while(*src)
     {
       DBG_PRINT("operand_add_char()\n");
-      if(operand_add_char(this, *str++) != true)                     return false;
+      if(operand_add_char(this, *src++) != true)                     return false;
     }
 
     DBG_PRINT("operand_get_base()\n");
@@ -764,7 +765,7 @@ operand_test(void)
     char result[1024];
     if(operand_to_str(this, result, sizeof(result)) != true)         return false;
     DBG_PRINT("  str = '%s'.\n", result);
-    if(strcmp(result, t->str) != 0)                                  return false;
+    if(strcmp(result, t->dst) != 0)                                  return false;
 
     DBG_PRINT("operand_delete()\n");
     if(operand_delete(this) != true)                                 return false;
