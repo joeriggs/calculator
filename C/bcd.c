@@ -126,6 +126,19 @@ struct bcd {
 };
   
 /******************************************************************************
+ ******************************** OPS STRUCT **********************************
+ *****************************************************************************/
+
+operand_api bcd_ops = {
+  .base_name = "BCD",
+  .op_add = (operand_api_binary_op) bcd_op_add,
+  .op_sub = (operand_api_binary_op) bcd_op_sub,
+  .op_mul = (operand_api_binary_op) bcd_op_mul,
+  .op_div = (operand_api_binary_op) bcd_op_div,
+  .op_exp = (operand_api_binary_op) bcd_op_exp
+};
+
+/******************************************************************************
  ******************************** PRIMITIVES **********************************
  *****************************************************************************/
 
@@ -1639,6 +1652,21 @@ bcd_op_exp(bcd *op1,
 /******************************************************************************
  ********************************* PUBLIC API *********************************
  *****************************************************************************/
+
+/* Return a pointer to the exported bcd operations.
+ *
+ * Input:
+ *   N/A.
+ *
+ * Output:
+ *   Returns a pointer to the operations.
+ *   Returns 0 if unable to return the pointer to the ops.
+ */
+operand_api *
+bcd_return_ops(void)
+{
+  return &bcd_ops;
+}
 
 /* Create a new bcd object.  This object can be used to access the bcd class.
  *

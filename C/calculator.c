@@ -593,7 +593,7 @@ calculator_delete(calculator *this)
  *
  * Output:
  *   true  = success.  *base = the current base.
- *   false = failure.  *base = operand_base_unknown (if base != 0).
+ *   false = failure.  *base is undefined.
  */
 bool
 calculator_get_operand_base(calculator *this,
@@ -607,10 +607,6 @@ calculator_get_operand_base(calculator *this,
     {
       *cur_base = this->base;
       retcode = true;
-    }
-    else
-    {
-      *cur_base = operand_base_unknown;
     }
   }
 

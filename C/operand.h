@@ -6,10 +6,12 @@
 
 /****************************** CLASS DEFINITION ******************************/
 
+/* This is a list of the supported number bases.  NOTE that these values are
+ * used as indexes into the operand_ops table in operand.c. */
 typedef enum {
-  operand_base_10,
+  operand_base_10 = 1,
   operand_base_16,
-  operand_base_unknown
+  operand_base_max
 } operand_base;
 
 typedef struct operand operand;
@@ -30,6 +32,8 @@ bool operand_op_xor(operand *op1, operand *op2);
 bool operand_op_not(operand *op);
 
 /********************************* PUBLIC API *********************************/
+
+bool operand_initialize(void);
 
 operand *operand_new(operand_base base);
 

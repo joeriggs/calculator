@@ -6,6 +6,8 @@
 #ifndef __BCD_H__
 #define __BCD_H__
 
+#include "operand_api.h"
+
 /****************************** CLASS DEFINITION ******************************/
 
 typedef struct bcd bcd;
@@ -19,6 +21,8 @@ bool bcd_op_div(bcd *op1, bcd *op2);
 bool bcd_op_exp(bcd *op1, bcd *op2);
 
 /********************************* PUBLIC API *********************************/
+
+operand_api * bcd_return_ops(void);
 
 bcd *bcd_new(void);
 

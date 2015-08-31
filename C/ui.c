@@ -156,9 +156,9 @@ bool ui(void)
               operand_base new_base;
               switch(cur_base)
               {
-              case operand_base_10: new_base = operand_base_16;      break;
-              case operand_base_16: new_base = operand_base_10;      break;
-              default:              new_base = operand_base_unknown; break;
+              case operand_base_10: new_base = operand_base_16; break;
+              case operand_base_16: new_base = operand_base_10; break;
+              default:              new_base = operand_base_10; break;
               }
               calculator_set_operand_base(calc, new_base);
             }

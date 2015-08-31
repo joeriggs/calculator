@@ -27,6 +27,12 @@ struct operand {
   /* This is the number when we're running in hexadecimal mode. */
   hex *hexnum;
 
+  /* This is a pointer to the number that we're currently using.  It points to
+   * either this->decnum or this->hexnum.  This allows all of the op functions
+   * below to run without having to think about which number base we're using.
+   */
+  void *current_num;
+
   /* The number base we're currently configured to use.  This refers to things
    * like base_10 or base_16. */
   operand_base base;
@@ -41,47 +47,14 @@ struct operand {
  ******************************** PRIVATE API *********************************
  *****************************************************************************/
 
+/* This is a jump table (indexed via an operand_base value) that defines all of
+ * the operations that each data type (base_10, base_16, etc) supports.  If a
+ * data type doesn't support an operation, then its pointer will be zero. */
+operand_api *ops[operand_base_max] = { 0, 0 };
+
 /******************************************************************************
  ********************************* PUBLIC OPS *********************************
  *****************************************************************************/
-
-#ifdef DEBUG
-/* Return a string that represents the current number base.  Note that this
- * function is for debugging purposes.
- *
- * Input:
- *   base = The enumerated base type.
- *
- * Output:
- *   Returns a pointer to a string that contains the name of the base.
- */
-static inline const char *
-operand_base_to_str(operand_base base)
-{
-  const char *base_name;
-
-  switch(base)
-  {
-  case operand_base_10:
-    base_name = "BASE 10";
-    break;
-
-  case operand_base_16:
-    base_name = "BASE 16";
-    break;
-
-  case operand_base_unknown:
-    base_name = "UNKNOWN";
-    break;
-
-  default:
-    base_name = "INVALID";
-    break;
-  }
-
-  return base_name;
-}
-#endif // DEBUG
 
 /* This is the addition function.
  *
@@ -104,20 +77,11 @@ operand_op_add(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_add;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      retcode = bcd_op_add(op1->decnum, op2->decnum);
-      break;
-
-    case operand_base_16:
-      retcode = hex_op_add(op1->hexnum, op2->hexnum);
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
@@ -147,25 +111,16 @@ operand_op_sub(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_sub;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      retcode = bcd_op_sub(op1->decnum, op2->decnum);
-      break;
-
-    case operand_base_16:
-      retcode = hex_op_sub(op1->hexnum, op2->hexnum);
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -190,26 +145,16 @@ operand_op_mul(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_mul;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      retcode = bcd_op_mul(op1->decnum, op2->decnum);
-      break;
-
-    case operand_base_16:
-      retcode = hex_op_mul(op1->hexnum, op2->hexnum);
-      break;
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -234,25 +179,16 @@ operand_op_div(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_div;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      retcode = bcd_op_div(op1->decnum, op2->decnum);
-      break;
-
-    case operand_base_16:
-      retcode = hex_op_div(op1->hexnum, op2->hexnum);
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -277,24 +213,16 @@ operand_op_exp(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_exp;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      retcode = bcd_op_exp(op1->decnum, op2->decnum);
-      break;
-
-    case operand_base_16:
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -319,23 +247,16 @@ operand_op_and(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_and;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      break;
-
-    case operand_base_16:
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -360,23 +281,16 @@ operand_op_or(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_or;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      break;
-
-    case operand_base_16:
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -402,23 +316,16 @@ operand_op_xor(operand *op1,
    * kind of problem. */
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(op1->base)
+    operand_base base = op1->base;
+    operand_api_binary_op func = ops[base]->op_xor;
+    if(func != (operand_api_binary_op) 0)
     {
-    case operand_base_10:
-      break;
-
-    case operand_base_16:
-      break;
-
-    default:
-      break;
+      retcode = func(op1->current_num, op2->current_num);
     }
 
     op1->add_char_allowed = op2->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
@@ -436,31 +343,52 @@ operand_op_not(operand *this)
 {
   bool retcode = false;
 
-  if(this!= (operand *) 0)
+  /* Both operands have to be of the same base.  We don't try to correct that
+   * kind of problem. */
+  if(this != (operand *) 0)
   {
-    /* Pass the operation along to the class that knows how to deal with this
-     * type of number. */
-    switch(this->base)
+    operand_base base = this->base;
+    operand_api_unary_op func = ops[base]->op_not;
+    if(func != (operand_api_unary_op) 0)
     {
-    case operand_base_10:
-      break;
-
-    case operand_base_16:
-      break;
-
-    default:
-      break;
+      retcode = func(this->current_num);
     }
 
     this->add_char_allowed = false;
   }
-
+    
   return retcode;
 }
 
 /******************************************************************************
  ********************************* PUBLIC API *********************************
  *****************************************************************************/
+
+/* Initialize the operand class.  This has nothing to do with creating,
+ * deleting, or modifying operand objects.  It has to do with giving the operand
+ * class an opportunity to initialize some private data.
+ *
+ * Input:
+ *   N/A.
+ *
+ * Output:
+ *   true  = success.  The operand class has initialized its data.
+ *   false = failure.  There were problems  The operand class will have limited
+ *                     or no functionality.
+ */
+bool
+operand_initialize(void)
+{
+  bool retcode = false;
+
+  if(((ops[operand_base_10] = bcd_return_ops()) != (operand_api *) 0) &&
+     ((ops[operand_base_16] = hex_return_ops()) != (operand_api *) 0))
+  {
+    retcode = true;
+  }
+
+  return retcode;
+}
 
 /* Create a new operand object.  This object can be used to access the operand
  * class.
@@ -479,22 +407,13 @@ operand_new(operand_base base)
 
   if(this != (operand *) 0)
   {
-    this->base = base;
+    memset(this, 0, sizeof(*this));
     this->add_char_allowed = true;
 
     if( ((this->decnum = bcd_new()) == (bcd *) 0) ||
-        ((this->hexnum = hex_new()) == (hex *) 0) )
+        ((this->hexnum = hex_new()) == (hex *) 0) ||
+        (operand_set_base(this, operand_base_10) == false) )
     {
-      if(this->decnum != (bcd *) 0)
-      {
-        bcd_delete(this->decnum);
-      }
-
-      if(this->hexnum != (hex *) 0)
-      {
-        hex_delete(this->hexnum);
-      }
-
       operand_delete(this);
       this = (operand *) 0;
     }
@@ -537,7 +456,7 @@ operand_delete(operand *this)
  *
  * Output:
  *   true  = success.  *base = the current base.
- *   false = failure.  *base = operand_base_unknown (if it's a valid pointer).
+ *   false = failure.  *base is undefined.
  */
 bool
 operand_get_base(operand *this,
@@ -552,10 +471,6 @@ operand_get_base(operand *this,
     {
       *base = this->base;
       retcode = true;
-    }
-    else
-    {
-      *base = operand_base_unknown;
     }
   }
 
@@ -582,7 +497,7 @@ operand_set_base(operand *this,
   if(this != (operand *) 0)
   {
     DBG_PRINT("%s(): this->base %s: base %s.\n", __func__, 
-              operand_base_to_str(this->base), operand_base_to_str(base));
+              ops[this->base]->base_name, ops[base]->base_name);
     if(this->base != base)
     {
       int64_t new_num;
@@ -591,6 +506,7 @@ operand_set_base(operand *this,
       {
       case operand_base_10:
         this->base = base;
+        this->current_num = this->decnum;
         if(hex_export(this->hexnum, &new_num) == true)
         {
           retcode = bcd_import(this->decnum, new_num);
@@ -599,6 +515,7 @@ operand_set_base(operand *this,
       
       case operand_base_16:
         this->base = base;
+        this->current_num = this->hexnum;
         if(bcd_export(this->decnum, &new_num) == true)
         {
           retcode = hex_import(this->hexnum, new_num);

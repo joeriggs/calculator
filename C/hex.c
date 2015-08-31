@@ -26,6 +26,23 @@ struct hex {
 };
   
 /******************************************************************************
+ ******************************** OPS STRUCT **********************************
+ *****************************************************************************/
+
+operand_api hex_ops = {
+  .base_name = "HEX",
+  .op_add = (operand_api_binary_op) hex_op_add,
+  .op_sub = (operand_api_binary_op) hex_op_sub,
+  .op_mul = (operand_api_binary_op) hex_op_mul,
+  .op_div = (operand_api_binary_op) hex_op_div,
+  .op_exp = 0,
+//  .op_and = (operand_api_binary_op) hex_op_and,
+//  .op_or  = (operand_api_binary_op) hex_op_or,
+//  .op_xor = (operand_api_binary_op) hex_op_xor,
+//  .op_not = (operand_api_binary_op) hex_op_not
+};
+
+/******************************************************************************
  ******************************** PRIVATE API *********************************
  *****************************************************************************/
 
@@ -141,6 +158,21 @@ hex_op_div(hex *op1,
 /******************************************************************************
  ********************************* PUBLIC API *********************************
  *****************************************************************************/
+
+/* Return a pointer to the exported hex operations.
+ *
+ * Input:
+ *   N/A.
+ *
+ * Output:
+ *   Returns a pointer to the operations.
+ *   Returns 0 if unable to return the pointer to the ops.
+ */
+operand_api *
+hex_return_ops(void)
+{
+  return &hex_ops;
+}
 
 /* Create a new hex object.  This object can be used to access the hex class.
  *

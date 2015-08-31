@@ -8,6 +8,8 @@
 #ifndef __HEX_H__
 #define __HEX_H__
 
+#include "operand_api.h"
+
 /****************************** CLASS DEFINITION ******************************/
 
 typedef struct hex hex;
@@ -20,6 +22,8 @@ bool hex_op_mul(hex *op1, hex *op2);
 bool hex_op_div(hex *op1, hex *op2);
 
 /********************************* PUBLIC API *********************************/
+
+operand_api * hex_return_ops(void);
 
 hex *hex_new(void);
 
