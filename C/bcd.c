@@ -14,7 +14,7 @@
 #include "common.h"
 
 #include "bcd.h"
-#include "fp_exp.h"
+#include "operator_exp.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
@@ -1633,17 +1633,17 @@ bcd_op_exp(bcd *op1,
 
   do
   {
-    fp_exp *fp;
+    operator_exp *fp;
 
-    if((op1 == (bcd *) 0) || (op2 == (bcd *) 0))    { break; }
+    if((op1 == (bcd *) 0) || (op2 == (bcd *) 0))                { break; }
 
-    if((fp = fp_exp_new(op1, op2)) == (fp_exp *) 0) { break; }
+    if((fp = operator_exp_new(op1, op2)) == (operator_exp *) 0) { break; }
 
-    if(fp_exp_calc(fp) == false)                    { break; }
+    if(operator_exp_calc(fp) == false)                          { break; }
 
-    if(fp_exp_get_result(fp, op1) == false)         { break; }
+    if(operator_exp_get_result(fp, op1) == false)               { break; }
 
-    retcode = fp_exp_delete(fp);
+    retcode = operator_exp_delete(fp);
   } while(0);
     
   return retcode;

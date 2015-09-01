@@ -7,13 +7,15 @@
 
 - Enhanced implementation:
   - Modify operand.c to use tables to point to the dec or hex functions.
-    - Remove public references from header files (hex.h and bcd.h).
     - Rename fp_exp.c to operator_exp.c.
+    - Rename hex.c to operand_base_16.c.
+    - Rename bcd.c to operand_base_10.c.
+    - Remove public references from header files (hex.h and bcd.h).
     - Modify operator_exp.c to use "operand" objects instead of "bcd".  This
       will allow us to get rid of the public bcd_op_xxx() functions, and it'll
       set us up if we want to do exponentiation of non-base-10 numbers.
-    - Rename hex.c to operand_base_16.c.
-    - Rename bcd.c to operand_base_10.c.
+      - Remove "#include "bcd.h" from operator_exp.[ch].  They should include
+        operand.h instead.
   - Hex operators:
     - Modulus
     - Shift Left

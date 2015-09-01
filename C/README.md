@@ -48,7 +48,7 @@ The class hierarchy looks like this:
 
   * **operand** is used to store each operand.  It contains members that know how to manipulate the numeric operands.
 
-    * **fp_exp** is used to perform exponent operations.  Decimal floating point exponentiation is fairly complex, so that functionality is encapsulated in a separate class in order to avoid making the BCD class overly complicated.
+    * **operator_exp** is used to perform exponent operations.  Floating point exponentiation is fairly complex, so that functionality is encapsulated in a separate class in order to avoid making the BCD class overly complicated.
 
     * **bcd** provides a binary coded decimal (bcd) data representation that allows the calculator to do decimal math without running into problems caused by IEEE 754 float or double issues.
 

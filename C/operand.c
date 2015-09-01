@@ -10,7 +10,6 @@
 #include "common.h"
 
 #include "bcd.h"
-#include "fp_exp.h"
 #include "hex.h"
 #include "operand.h"
 
