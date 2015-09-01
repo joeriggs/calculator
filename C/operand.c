@@ -52,6 +52,64 @@ struct operand {
  * data type doesn't support an operation, then its pointer will be zero. */
 operand_api *ops[operand_base_max] = { 0, 0 };
 
+/* This is the standard processing for a binary operation.  It is called from
+ * all of the add, sub, mul, etc. functions below.
+ *
+ * Input:
+ *   op1     = A ptr to the 1st operand.  The result is returned in this one.
+ *
+ *   op2     = The other operand.  Addition is BINARY.
+ *
+ *   op      = The type of operation (add, sub, mul, div, etc).  It is used to
+ *             select the correct operation from the ops data structure.
+ *
+ *   retcode = We set this to the PASS/FAIL return code.
+ *
+ * Output:
+ *   result contains the pass/fail result.
+ *   op1 contains the result of the operation.
+ */
+#define OPERAND_BINARY_OP(op1, op2, op, retcode) \
+  /* Operands must have the same base. */ \
+  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) ) \
+  { \
+    operand_base base = op1->base; \
+    operand_api_binary_op func = ops[base]->op_##op; \
+    if(func != (operand_api_binary_op) 0) \
+    { \
+      retcode = func(op1->current_num, op2->current_num); \
+    } \
+    op1->add_char_allowed = op2->add_char_allowed = false; \
+  }
+
+/* This is the standard processing for a unary operation.  It is called from
+ * all of the not function below.
+ *
+ * Input:
+ *   op1     = A ptr to the operand.  The result is returned in this one.
+ *
+ *   op      = The type of operation.  Currently only "not" is supported.  The
+ *             name is used to select the correct operation from the ops data
+ *             structure.
+ *
+ *   retcode = We set this to the PASS/FAIL return code.
+ *
+ * Output:
+ *   result contains the pass/fail result.
+ *   op1 contains the result of the operation.
+ */
+#define OPERAND_UNARY_OP(op1, op, retcode) \
+  if(op1 != (operand *) 0) \
+  { \
+    operand_base base = op1->base; \
+    operand_api_unary_op func = ops[base]->op_##op; \
+    if(func != (operand_api_unary_op) 0) \
+    { \
+      retcode = func(op1->current_num); \
+    } \
+    op1->add_char_allowed = false; \
+  }
+
 /******************************************************************************
  ********************************* PUBLIC OPS *********************************
  *****************************************************************************/
@@ -73,20 +131,8 @@ operand_op_add(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_add;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, add, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -107,20 +153,8 @@ operand_op_sub(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_sub;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, sub, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -141,20 +175,8 @@ operand_op_mul(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_mul;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, mul, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -175,20 +197,8 @@ operand_op_div(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_div;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, div, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -209,20 +219,8 @@ operand_op_exp(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_exp;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, exp, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -243,20 +241,8 @@ operand_op_and(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_and;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, and, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -277,20 +263,8 @@ operand_op_or(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_or;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, or, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -312,20 +286,8 @@ operand_op_xor(operand *op1,
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) )
-  {
-    operand_base base = op1->base;
-    operand_api_binary_op func = ops[base]->op_xor;
-    if(func != (operand_api_binary_op) 0)
-    {
-      retcode = func(op1->current_num, op2->current_num);
-    }
+  OPERAND_BINARY_OP(op1, op2, xor, retcode);
 
-    op1->add_char_allowed = op2->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
@@ -343,20 +305,8 @@ operand_op_not(operand *this)
 {
   bool retcode = false;
 
-  /* Both operands have to be of the same base.  We don't try to correct that
-   * kind of problem. */
-  if(this != (operand *) 0)
-  {
-    operand_base base = this->base;
-    operand_api_unary_op func = ops[base]->op_not;
-    if(func != (operand_api_unary_op) 0)
-    {
-      retcode = func(this->current_num);
-    }
+  OPERAND_UNARY_OP(this, not, retcode);
 
-    this->add_char_allowed = false;
-  }
-    
   return retcode;
 }
 
