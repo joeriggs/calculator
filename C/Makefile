@@ -1,13 +1,13 @@
 
-BASE_OBJS = bcd.o          \
-            calculator.o   \
-            hex.o          \
-            list.o         \
-            main.o         \
-            operand.o      \
-            operator.o     \
-            operator_exp.o \
-            raw_stdin.o    \
+BASE_OBJS = calculator.o      \
+            list.o            \
+            main.o            \
+            operand.o         \
+            operand_base_10.o \
+            operand_base_16.o \
+            operator.o        \
+            operator_exp.o    \
+            raw_stdin.o       \
             stack.o
 
 TEST ?= 0

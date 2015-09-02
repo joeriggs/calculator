@@ -18,9 +18,9 @@ calculator *calculator_new(void);
 
 bool calculator_delete(calculator *this);
 
-bool calculator_get_operand_base(calculator *this, operand_base *cur_base);
+bool calculator_get_operand_type(calculator *this, operand_type *cur_base);
 
-bool calculator_set_operand_base(calculator *this, operand_base  new_base);
+bool calculator_set_operand_type(calculator *this, operand_type  new_base);
 
 bool calculator_add_char(calculator *this, char c);
 

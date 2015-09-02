@@ -9,11 +9,11 @@
 
 #include "common.h"
 
-#include "bcd.h"
 #include "calculator.h"
-#include "hex.h"
 #include "list.h"
 #include "operand.h"
+#include "operand_base_10.h"
+#include "operand_base_16.h"
 #include "operator.h"
 #include "operator_exp.h"
 #include "raw_stdin.h"
@@ -61,15 +61,15 @@ bool test(void)
     test_func   func;
   } unit_test;
   unit_test tests[] = {
-    { "BCD",               bcd_test          },
-    { "Calculator",        calculator_test   },
-    { "HEX",               hex_test          },
-    { "List",              list_test         },
-    { "Operand",           operand_test      },
-    { "Operator",          operator_test     },
-    { "Operator Exponent", operator_exp_test },
-    { "Raw Console",       raw_stdin_test    },
-    { "Stack",             stack_test        },
+    { "Calculator",        calculator_test      },
+    { "List",              list_test            },
+    { "Operand",           operand_test         },
+    { "Operand Base 10",   operand_base_10_test },
+    { "Operand Base 10",   operand_base_16_test },
+    { "Operator",          operator_test        },
+    { "Operator Exponent", operator_exp_test    },
+    { "Raw Console",       raw_stdin_test       },
+    { "Stack",             stack_test           },
   };
   size_t tests_size = (sizeof(tests) / sizeof(unit_test));
 

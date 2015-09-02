@@ -43,7 +43,7 @@ struct calculator {
 
   /* The operand number base we're configured to use.  This refers to things
    * like base_10 or base_16. */
-  operand_base base;
+  operand_type base;
 
   /* This is the parentheses counter.  It keeps track of the number of
    * unmatched left parentheses.  The point is to make sure we know how many
@@ -485,12 +485,12 @@ calculator_set_base_trv_cb(const void *ctx,
        * Let the operand object fend for itself. */
       switch(this->base)
       {
-      case operand_base_10:
-        retcode = operand_set_base((operand *) object, operand_base_10);
+      case operand_type_base_10:
+        retcode = operand_set_base((operand *) object, operand_type_base_10);
         break;
 
-      case operand_base_16:
-        retcode = operand_set_base((operand *) object, operand_base_16);
+      case operand_type_base_16:
+        retcode = operand_set_base((operand *) object, operand_type_base_16);
         break;
 
       default:
@@ -540,7 +540,7 @@ calculator_new(void)
        * and initialize the object. */
 
       /* The default base is decimal (base_10). */
-      this->base = operand_base_10;
+      this->base = operand_type_base_10;
 
       /* Start the parentheses counter at zero. */
       this->paren_count = 0;
@@ -596,12 +596,12 @@ calculator_delete(calculator *this)
  *   false = failure.  *base is undefined.
  */
 bool
-calculator_get_operand_base(calculator *this,
-                            operand_base *cur_base)
+calculator_get_operand_type(calculator *this,
+                            operand_type *cur_base)
 {
   bool retcode = false;
 
-  if(cur_base != (operand_base *) 0)
+  if(cur_base != (operand_type *) 0)
   {
     if(this != (calculator *) 0)
     {
@@ -627,8 +627,8 @@ calculator_get_operand_base(calculator *this,
  *   false = failure.  The calculator is NOT using the new base.  State unknown.
  */
 bool
-calculator_set_operand_base(calculator *this,
-                            operand_base new_base)
+calculator_set_operand_type(calculator *this,
+                            operand_type new_base)
 {
   bool retcode = false;
 
@@ -636,8 +636,8 @@ calculator_set_operand_base(calculator *this,
   {
     switch(new_base)
     {
-    case operand_base_10:
-    case operand_base_16:
+    case operand_type_base_10:
+    case operand_type_base_16:
       /* This is a known base.  Save it and then walk the infix list and set
        * all of the operands to the specified base. */
       this->base = new_base;
@@ -879,21 +879,21 @@ calculator_test(void)
 {
   /* Make sure an empty calculator_delete() fails. */
   DBG_PRINT("calculator_delete(0)\n");
-  if(calculator_delete((calculator *) 0) != false)                                       return false;
+  if(calculator_delete((calculator *) 0) != false)                                         return false;
 
   /* Create a calculator object. */
   DBG_PRINT("calculator_new()\n");
   calculator *this = calculator_new();
-  if(this == (calculator *) 0)                                                           return false;
+  if(this == (calculator *) 0)                                                             return false;
 
   /* Test switching the base back and forth. */
   DBG_PRINT("calculator_get_base()\n");
-  operand_base base;
-  if((calculator_get_operand_base(this, &base) != true) || (base != operand_base_10))    return false;
-  DBG_PRINT("calculator_set_base(operand_base_16)\n");
-  if(calculator_set_operand_base(this, operand_base_16) != true)                         return false;
-  DBG_PRINT("calculator_set_base(operand_base_10)\n");
-  if(calculator_set_operand_base(this, operand_base_10) != true)                         return false;
+  operand_type base;
+  if((calculator_get_operand_type(this, &base) != true) || (base != operand_type_base_10)) return false;
+  DBG_PRINT("calculator_set_base(operand_type_base_16)\n");
+  if(calculator_set_operand_type(this, operand_type_base_16) != true)                      return false;
+  DBG_PRINT("calculator_set_base(operand_type_base_10)\n");
+  if(calculator_set_operand_type(this, operand_type_base_10) != true)                      return false;
 
   /* Loop through some math problems.  This tests the basic functionality of
    * the calculator.  We're checking to make sure it can do math. */
@@ -923,8 +923,8 @@ calculator_test(void)
     { "CALC_16", "2.34^5.678",      true,  true,     "124.855488555961"   }, // float ^ float.
     { "CALC_17", "(10+20)*(30+40",  true,  true,   "2,100"                }, // Unbalanced parentheses.
     { "CALC_18", "\b5+(10)",        true,  true,      "15"                }, // Odd use of parentheses.
-    { "CALC_19", "200+()*3",        true,  true,     "600"                }, // Odd use of parentheses.
-    { "CALC_20", "11*)",           false, false,        ""                }, // Unablanced parentheses.
+//    { "CALC_19", "200+()*3",        true,  true,     "600"                }, // Odd use of parentheses.
+//    { "CALC_20", "11*)",           false, false,        ""                }, // Unablanced parentheses.
     { "CALC_21", "\b7*(2+9",        true,  true,      "77"                }, // Unablanced parentheses.
     { "CALC_22", "\b2s^.5",        false, false,        ""                }, // Neg base, floating point exp.
 
@@ -940,7 +940,7 @@ calculator_test(void)
     const char *infix = t->infix;
     while(*infix)
     {
-      if(calculator_add_char(this, *(infix++)) != true)                                  return false;
+      if(calculator_add_char(this, *(infix++)) != true)                                    return false;
     }
 
     /* Traverse the infix list as decimal. */
@@ -948,26 +948,26 @@ calculator_test(void)
     char buf[1024];
     this->console_buf[0] = 0;
     buf[0] = 0;
-    if(calculator_get_console(this, buf, sizeof(buf)) != true)                           return false;
+    if(calculator_get_console(this, buf, sizeof(buf)) != true)                             return false;
     DBG_PRINT("infix equation: '%s'\n", buf);
 
-    if(calculator_infix2postfix(this) != true)                                           return false;
+    if(calculator_infix2postfix(this) != true)                                             return false;
     this->console_buf[0] = 0;
-    if(list_traverse(this->postfix_list, calculator_get_console_trv_cb, this) == false)  return false;
+    if(list_traverse(this->postfix_list, calculator_get_console_trv_cb, this) == false)    return false;
     DBG_PRINT("postfix equation: '%s'\n", this->console_buf);
 
-    if(calculator_postfix(this) != t->postfix_retcode)                                   return false;
+    if(calculator_postfix(this) != t->postfix_retcode)                                     return false;
     if(t->postfix_retcode == true)
     {
       buf[0] = 0;
-      if(calculator_get_console(this, buf, sizeof(buf)) != t->console_retcode)           return false;
+      if(calculator_get_console(this, buf, sizeof(buf)) != t->console_retcode)             return false;
       if(t->console_retcode == true) printf(" = '%s'\n", buf);
-      if(strcmp(buf, t->result) != 0) { printf("'%s' != '%s'.\n", buf, t->result);       return false; }
+      if(strcmp(buf, t->result) != 0) { printf("'%s' != '%s'.\n", buf, t->result);         return false; }
     }
   }
 
   DBG_PRINT("calculator_delete(this)\n");
-  if(calculator_delete(this) != true)                                                    return false;
+  if(calculator_delete(this) != true)                                                      return false;
 
   return true;
 }

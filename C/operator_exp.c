@@ -10,7 +10,7 @@
 
 #include "common.h"
 
-#include "bcd.h"
+#include "operand_base_10.h"
 #include "operator_exp.h"
 
 /******************************************************************************
@@ -19,9 +19,9 @@
 
 /* This is the operator_exp class. */
 struct operator_exp {
-  bcd *base;
-  bcd *exp;
-  bcd *result;
+  operand_base_10 *base;
+  operand_base_10 *exp;
+  operand_base_10 *result;
 
   /* We often need to convert exp to a fraction.  It is stored here. */
   uint64_t exp_numerator;
@@ -39,65 +39,65 @@ struct operator_exp {
  *
  *   exp    = The integer exponent.  Currently only supports positive exponents.
  *
- *   result = A pointer to the bcd object that will receive the result.  Note
- *            that it is okay if base == result.  We will make sure we don't
- *            stomp on base while we compute result.
+ *   result = A pointer to the operand_base_10 object that will receive the
+ *            result.  Note that it is okay if base == result.  We will make
+ *            sure we don't stomp on base while we compute result.
  *
  * Output:
  *   true  = success.  *result contains the result.
  *   false = failure.  *result is undefined.
  */
 static bool
-operator_exp_integer_exp(bcd *base,
-                         int  exp,
-                         bcd *result)
+operator_exp_integer_exp(operand_base_10 *base,
+                         int              exp,
+                         operand_base_10 *result)
 {
   bool retcode = false;
 
-  if((base != (bcd *) 0) && (result != (bcd *) 0))
+  if((base != (operand_base_10 *) 0) && (result != (operand_base_10 *) 0))
   {
-    bcd *rslt_tmp = (bcd *) 0;
-    bcd *base_tmp = (bcd *) 0;
-    bcd *zero     = (bcd *) 0;
-    bcd *one      = (bcd *) 0;
+    operand_base_10 *rslt_tmp = (operand_base_10 *) 0;
+    operand_base_10 *base_tmp = (operand_base_10 *) 0;
+    operand_base_10 *zero     = (operand_base_10 *) 0;
+    operand_base_10 *one      = (operand_base_10 *) 0;
 
     do
     {
-      if((rslt_tmp = (base == result) ? bcd_new() : result) == (bcd *) 0) { break; }
-      if((base_tmp = bcd_new()) == (bcd *) 0)                             { break; }
-      if((zero     = bcd_new()) == (bcd *) 0)                             { break; }
-      if((one      = bcd_new()) == (bcd *) 0)                             { break; }
+      if((rslt_tmp = (base == result) ? operand_base_10_new() : result) == (operand_base_10 *) 0) { break; }
+      if((base_tmp = operand_base_10_new()) == (operand_base_10 *) 0)                             { break; }
+      if((zero     = operand_base_10_new()) == (operand_base_10 *) 0)                             { break; }
+      if((one      = operand_base_10_new()) == (operand_base_10 *) 0)                             { break; }
 
-      if(bcd_copy(base, base_tmp) == false)                               { break; }
-      if(bcd_import(zero, 0) == false)                                    { break; }
-      if(bcd_import(one, 1) == false)                                     { break; }
+      if(operand_base_10_copy(base, base_tmp) == false)                                           { break; }
+      if(operand_base_10_import(zero, 0) == false)                                                { break; }
+      if(operand_base_10_import(one, 1) == false)                                                 { break; }
 
       /* Special case.  base ^ 0 = 1. */
       if(exp == 0)
       {
-        retcode = bcd_copy(one, rslt_tmp);
+        retcode = operand_base_10_copy(one, rslt_tmp);
         break;
       }
 
       /* Special case.  0 ^ exp = 0. */
-      if(bcd_cmp(base, zero) == 0)
+      if(operand_base_10_cmp(base, zero) == 0)
       {
-        retcode = bcd_copy(zero, rslt_tmp);
+        retcode = operand_base_10_copy(zero, rslt_tmp);
         break;
       }
 
       /* Set res = 1.  (base ^ 0) = 1, so this is the right place to start. */
-      if(bcd_import(rslt_tmp, 1) == false)                                { break; }
+      if(operand_base_10_import(rslt_tmp, 1) == false)                                            { break; }
 
       while(exp != 0)
       {
         if((exp & 1) != 0)
         {
-          if(bcd_op_mul(rslt_tmp, base_tmp) == false)                     { break; }
+          if(operand_base_10_op_mul(rslt_tmp, base_tmp) == false)                                 { break; }
         }
 
         /* Prepare for the next iteration. */
-        if(bcd_op_mul(base_tmp, base_tmp) == false)                       { break; }
+        if(operand_base_10_op_mul(base_tmp, base_tmp) == false)                                   { break; }
         exp >>= 1;
       }
 
@@ -105,14 +105,14 @@ operator_exp_integer_exp(bcd *base,
       
     } while(0);
 
-    bcd_delete(one);
-    bcd_delete(zero);
-    bcd_delete(base_tmp);
+    operand_base_10_delete(one);
+    operand_base_10_delete(zero);
+    operand_base_10_delete(base_tmp);
 
     if((retcode == true) && (base == result))
     {
-      retcode = bcd_copy(rslt_tmp, result);
-      bcd_delete(rslt_tmp);
+      retcode = operand_base_10_copy(rslt_tmp, result);
+      operand_base_10_delete(rslt_tmp);
     }
   }
 
@@ -146,21 +146,21 @@ operator_exp_to_fraction(operator_exp *this)
   bool retcode = false;
 
   /* We'll use these inside a loop, then we'll delete them when we're done. */
-  bcd *ten    = (bcd *) 0;
-  bcd *root   = (bcd *) 0;
-  bcd *tmp_f1 = (bcd *) 0;
-  bcd *tmp_f2 = (bcd *) 0;
+  operand_base_10 *ten    = (operand_base_10 *) 0;
+  operand_base_10 *root   = (operand_base_10 *) 0;
+  operand_base_10 *tmp_f1 = (operand_base_10 *) 0;
+  operand_base_10 *tmp_f2 = (operand_base_10 *) 0;
 
   do
   {
     if(this == (operator_exp *) 0)                                       { break; }
 
-    if((ten    = bcd_new()) == (bcd *) 0)                                { break; }
-    if((root   = bcd_new()) == (bcd *) 0)                                { break; }
-    if((tmp_f1 = bcd_new()) == (bcd *) 0)                                { break; }
-    if((tmp_f2 = bcd_new()) == (bcd *) 0)                                { break; }
+    if((ten    = operand_base_10_new()) == (operand_base_10 *) 0)        { break; }
+    if((root   = operand_base_10_new()) == (operand_base_10 *) 0)        { break; }
+    if((tmp_f1 = operand_base_10_new()) == (operand_base_10 *) 0)        { break; }
+    if((tmp_f2 = operand_base_10_new()) == (operand_base_10 *) 0)        { break; }
 
-    if(bcd_import(ten, 10) == false)                                     { break; }
+    if(operand_base_10_import(ten, 10) == false)                         { break; }
 
     /* Convert the exponent to a fraction (numerator and denominator), and then
      * reduce the fraction.
@@ -170,17 +170,17 @@ operator_exp_to_fraction(operator_exp *this)
     {
       if((retcode = operator_exp_integer_exp(ten, loop, root)) == false) { break; }
 
-      if(bcd_copy(this->exp, tmp_f1) == false)                           { break; }
-      if((retcode = bcd_op_mul(tmp_f1, root)) == false)                  { break; }
+      if(operand_base_10_copy(this->exp, tmp_f1) == false)               { break; }
+      if((retcode = operand_base_10_op_mul(tmp_f1, root)) == false)      { break; }
 
       int64_t tmp_i;
-      if(bcd_export(tmp_f1, &tmp_i) == false)                            { break; }
-      if(bcd_import(tmp_f2, tmp_i) == false)                             { break; }
+      if(operand_base_10_export(tmp_f1, &tmp_i) == false)                { break; }
+      if(operand_base_10_import(tmp_f2, tmp_i) == false)                 { break; }
 
-      if(bcd_cmp(tmp_f1, tmp_f2) == 0)
+      if(operand_base_10_cmp(tmp_f1, tmp_f2) == 0)
       {
         this->exp_numerator = tmp_i;
-        if(bcd_export(root, &tmp_i) == false)                            { break; }
+        if(operand_base_10_export(root, &tmp_i) == false)                { break; }
         this->exp_denominator = tmp_i;
         retcode = true;
         break;
@@ -229,10 +229,10 @@ operator_exp_to_fraction(operator_exp *this)
     }
   } while(0);
 
-  bcd_delete(tmp_f2);
-  bcd_delete(tmp_f1);
-  bcd_delete(root);
-  bcd_delete(ten);
+  operand_base_10_delete(tmp_f2);
+  operand_base_10_delete(tmp_f1);
+  operand_base_10_delete(root);
+  operand_base_10_delete(ten);
 
   return retcode;
 }
@@ -259,7 +259,7 @@ operator_exp_to_fraction(operator_exp *this)
  *           A   = this->base
  *           n   = this->exp_denominator
  *
- *   guess = A pointer to a bcd object that will receive the guess.
+ *   guess = A pointer to a operand_base_10 object that will receive the guess.
  *           X_k = guess
  *
  * Output:
@@ -267,56 +267,56 @@ operator_exp_to_fraction(operator_exp *this)
  *   false = failure.  The contents of *guess is undefined.
  */
 static bool
-operator_exp_nth_root_guess(operator_exp *this,
-                            bcd          *guess)
+operator_exp_nth_root_guess(operator_exp    *this,
+                            operand_base_10 *guess)
 {
   bool retcode = false;
 
-  bcd *A              = (bcd *) 0;
-  bcd *n_f            = (bcd *) 0;
-  bcd *X_k            = (bcd *) 0;
-  bcd *part1          = (bcd *) 0;
-  bcd *part2          = (bcd *) 0;
-  bcd *part3          = (bcd *) 0;
-  bcd *part4          = (bcd *) 0;
-  bcd *delta_X_k      = (bcd *) 0;
-  bcd *delta_X_k_prev = (bcd *) 0;
-  bcd *zero           = (bcd *) 0;
-  bcd *guess_tmp      = (bcd *) 0;
-  bcd *best_diff      = (bcd *) 0;
-  bcd *test_rslt      = (bcd *) 0;
-  bcd *test_diff      = (bcd *) 0;
+  operand_base_10 *A              = (operand_base_10 *) 0;
+  operand_base_10 *n_f            = (operand_base_10 *) 0;
+  operand_base_10 *X_k            = (operand_base_10 *) 0;
+  operand_base_10 *part1          = (operand_base_10 *) 0;
+  operand_base_10 *part2          = (operand_base_10 *) 0;
+  operand_base_10 *part3          = (operand_base_10 *) 0;
+  operand_base_10 *part4          = (operand_base_10 *) 0;
+  operand_base_10 *delta_X_k      = (operand_base_10 *) 0;
+  operand_base_10 *delta_X_k_prev = (operand_base_10 *) 0;
+  operand_base_10 *zero           = (operand_base_10 *) 0;
+  operand_base_10 *guess_tmp      = (operand_base_10 *) 0;
+  operand_base_10 *best_diff      = (operand_base_10 *) 0;
+  operand_base_10 *test_rslt      = (operand_base_10 *) 0;
+  operand_base_10 *test_diff      = (operand_base_10 *) 0;
 
   do
   {
     if(this == (operator_exp *) 0)                                        { break; }
-    if(guess == (bcd *) 0)                                                { break; }
+    if(guess == (operand_base_10 *) 0)                                    { break; }
 
-    if((A = bcd_new()) == (bcd *) 0)                                      { break; }
-    if(bcd_copy(this->base, A) == false)                                  { break; }
+    if((A = operand_base_10_new()) == (operand_base_10 *) 0)              { break; }
+    if(operand_base_10_copy(this->base, A) == false)                      { break; }
 
     uint64_t n_int = this->exp_denominator;
-    if((n_f = bcd_new()) == (bcd *) 0)                                    { break; }
-    if(bcd_import(n_f, this->exp_denominator) == false)                   { break; }
+    if((n_f = operand_base_10_new()) == (operand_base_10 *) 0)            { break; }
+    if(operand_base_10_import(n_f, this->exp_denominator) == false)       { break; }
 
-    if((X_k = bcd_new()) == (bcd *) 0)                                    { break; }
-    if(bcd_import(X_k, 1) == false)                                       { break; }
+    if((X_k = operand_base_10_new()) == (operand_base_10 *) 0)            { break; }
+    if(operand_base_10_import(X_k, 1) == false)                           { break; }
 
-    if((part1          = bcd_new()) == (bcd *) 0)                         { break; }
-    if((part2          = bcd_new()) == (bcd *) 0)                         { break; }
-    if((part3          = bcd_new()) == (bcd *) 0)                         { break; }
-    if((part4          = bcd_new()) == (bcd *) 0)                         { break; }
-    if((delta_X_k      = bcd_new()) == (bcd *) 0)                         { break; }
-    if((delta_X_k_prev = bcd_new()) == (bcd *) 0)                         { break; }
+    if((part1          = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if((part2          = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if((part3          = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if((part4          = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if((delta_X_k      = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if((delta_X_k_prev = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
 
-    if((zero           = bcd_new()) == (bcd *) 0)                         { break; }
-    if(bcd_import(zero, 0) == false)                                      { break; }
+    if((zero           = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+    if(operand_base_10_import(zero, 0) == false)                          { break; }
 
-    if(bcd_import(delta_X_k_prev, 0) == false)                            { break; }
+    if(operand_base_10_import(delta_X_k_prev, 0) == false)                { break; }
 
-    if((best_diff = bcd_new()) == (bcd *) 0)                              { break; }
-    if((test_rslt = bcd_new()) == (bcd *) 0)                              { break; }
-    if((test_diff = bcd_new()) == (bcd *) 0)                              { break; }
+    if((best_diff = operand_base_10_new()) == (operand_base_10 *) 0)      { break; }
+    if((test_rslt = operand_base_10_new()) == (operand_base_10 *) 0)      { break; }
+    if((test_diff = operand_base_10_new()) == (operand_base_10 *) 0)      { break; }
 
     /* Solve the nth root (see description above).
      *
@@ -325,13 +325,13 @@ operator_exp_nth_root_guess(operator_exp *this,
      *             PART__1         -PART__2-
      * Delta X_k = (1 / n) * ((A / X_k^(n-1)) - X_k); X_k+1 = X_k + Delta X_k.
      */
-    if(bcd_import(part1, 1) == false)                                     { break; }
-    if(bcd_op_div(part1, n_f) == false)                                   { break; }
+    if(operand_base_10_import(part1, 1) == false)                         { break; }
+    if(operand_base_10_op_div(part1, n_f) == false)                       { break; }
     DBG_PRINT("%s(): START: A %s: n %s: X_k %s: part1 %s\n", __func__,
-              bcd_get_dbg_info(A),
-              bcd_get_dbg_info(n_f),
-              bcd_get_dbg_info(X_k),
-              bcd_get_dbg_info(part1));
+              operand_base_10_get_dbg_info(A),
+              operand_base_10_get_dbg_info(n_f),
+              operand_base_10_get_dbg_info(X_k),
+              operand_base_10_get_dbg_info(part1));
 
     int x;
     for(x = 0; x < 100000; x++)
@@ -340,43 +340,43 @@ operator_exp_nth_root_guess(operator_exp *this,
 
       if(operator_exp_integer_exp(X_k, (n_int - 1), part2) == false)      { break; }
       DBG_PRINT("%s(): PART2: %s ^ %lld = %s\n", __func__,
-                bcd_get_dbg_info(X_k),
+                operand_base_10_get_dbg_info(X_k),
                 (n_int - 1),
-                bcd_get_dbg_info(part2));
+                operand_base_10_get_dbg_info(part2));
 
-      if(bcd_copy(A, part3) == false)                                     { break; }
-      if(bcd_op_div(part3, part2) == false)                               { break; }
+      if(operand_base_10_copy(A, part3) == false)                         { break; }
+      if(operand_base_10_op_div(part3, part2) == false)                   { break; }
       DBG_PRINT("%s(): PART3: %s / %s = %s\n", __func__,
-                bcd_get_dbg_info(A),
-                bcd_get_dbg_info(part2),
-                bcd_get_dbg_info(part3));
+                operand_base_10_get_dbg_info(A),
+                operand_base_10_get_dbg_info(part2),
+                operand_base_10_get_dbg_info(part3));
 
-      if(bcd_copy(part3, part4) == false)                                 { break; }
-      if(bcd_op_sub(part4, X_k) == false)                                 { break; }
+      if(operand_base_10_copy(part3, part4) == false)                     { break; }
+      if(operand_base_10_op_sub(part4, X_k) == false)                     { break; }
       DBG_PRINT("%s(): PART4: %s - %s = %s\n", __func__,
-                bcd_get_dbg_info(part3),
-                bcd_get_dbg_info(X_k),
-                bcd_get_dbg_info(part4));
+                operand_base_10_get_dbg_info(part3),
+                operand_base_10_get_dbg_info(X_k),
+                operand_base_10_get_dbg_info(part4));
 
-      if(bcd_copy(part1, delta_X_k) == false)                             { break; }
-      if(bcd_op_mul(delta_X_k, part4) == false)                           { break; }
+      if(operand_base_10_copy(part1, delta_X_k) == false)                 { break; }
+      if(operand_base_10_op_mul(delta_X_k, part4) == false)               { break; }
       DBG_PRINT("%s(): Delta X_k: %s * %s = %s\n", __func__,
-                bcd_get_dbg_info(part1),
-                bcd_get_dbg_info(part4),
-                bcd_get_dbg_info(delta_X_k));
+                operand_base_10_get_dbg_info(part1),
+                operand_base_10_get_dbg_info(part4),
+                operand_base_10_get_dbg_info(delta_X_k));
 
       DBG_PRINT("%s(): Compare %s vs %s\n", __func__,
-                bcd_get_dbg_info(delta_X_k),
-                bcd_get_dbg_info(delta_X_k_prev));
-      if(bcd_cmp(delta_X_k, delta_X_k_prev) == 0)
+                operand_base_10_get_dbg_info(delta_X_k),
+                operand_base_10_get_dbg_info(delta_X_k_prev));
+      if(operand_base_10_cmp(delta_X_k, delta_X_k_prev) == 0)
       {
         break;
       }
 
-      if(bcd_copy(delta_X_k, delta_X_k_prev) == false)                    { break; }
-      if(bcd_op_add(X_k, delta_X_k) == false)                             { break; }
-      if(bcd_copy(X_k, guess) == false)                                   { break; }
-      DBG_PRINT("%s(): guess = %s\n", __func__, bcd_get_dbg_info(guess));
+      if(operand_base_10_copy(delta_X_k, delta_X_k_prev) == false)        { break; }
+      if(operand_base_10_op_add(X_k, delta_X_k) == false)                 { break; }
+      if(operand_base_10_copy(X_k, guess) == false)                       { break; }
+      DBG_PRINT("%s(): guess = %s\n", __func__, operand_base_10_get_dbg_info(guess));
 
       /* Check to see if we found the answer. */
       {
@@ -387,7 +387,7 @@ operator_exp_nth_root_guess(operator_exp *this,
          * Then we compare test_rslt against A and see how close we are. */
         if(operator_exp_integer_exp(guess, n_int, test_rslt) == false)    { break; }
 
-        int test_result = bcd_cmp(A, test_rslt);
+        int test_result = operand_base_10_cmp(A, test_rslt);
         if(test_result == 0)
         {
           /* We found the exactly perfect answer.  Drop out and return. */
@@ -397,27 +397,27 @@ operator_exp_nth_root_guess(operator_exp *this,
         else if(test_result == -1)
         {
           /* guess is too high.  Calculate how far off we are. */
-          bcd_copy(test_rslt, test_diff);
-          bcd_op_sub(test_diff, A);
+          operand_base_10_copy(test_rslt, test_diff);
+          operand_base_10_op_sub(test_diff, A);
         }
         else if(test_result == 1)
         {
           /* guess is too low.  Calculate how far off we are. */
-          bcd_copy(A, test_diff);
-          bcd_op_sub(test_diff, test_rslt);
+          operand_base_10_copy(A, test_diff);
+          operand_base_10_op_sub(test_diff, test_rslt);
         }
 
         /* If this is the first test, just save the test_diff and go again. */
-        if(bcd_cmp(best_diff, zero) == 0)
+        if(operand_base_10_cmp(best_diff, zero) == 0)
         {
-          bcd_copy(test_diff, best_diff);
+          operand_base_10_copy(test_diff, best_diff);
         }
 
         /* Otherwise, check to see if this is the best answer we've calculated
          * so far.  If it is, save it. */
         else
         {
-          test_result = bcd_cmp(test_diff, best_diff);
+          test_result = operand_base_10_cmp(test_diff, best_diff);
           if(test_result == 0)
           {
             /* We've seen this answer before.  This is the best we're going to
@@ -428,39 +428,39 @@ operator_exp_nth_root_guess(operator_exp *this,
           else if(test_result == -1)
           {
             /* This is our best answer so far.  Save it. */
-            bcd_copy(test_diff, best_diff);
+            operand_base_10_copy(test_diff, best_diff);
           }
         }
       }
     }
 
     /* The guess is always positive. */
-    if(bcd_cmp(guess, zero) < 0)
+    if(operand_base_10_cmp(guess, zero) < 0)
     {
-      if((guess_tmp = bcd_new()) == (bcd *) 0)                            { break; }
-      if(bcd_copy(zero, guess_tmp) == false)                              { break; }
-      if(bcd_op_sub(guess_tmp, guess) == false)                           { break; }
-      if(bcd_copy(guess_tmp, guess) == false)                             { break; }
+      if((guess_tmp = operand_base_10_new()) == (operand_base_10 *) 0)    { break; }
+      if(operand_base_10_copy(zero, guess_tmp) == false)                  { break; }
+      if(operand_base_10_op_sub(guess_tmp, guess) == false)               { break; }
+      if(operand_base_10_copy(guess_tmp, guess) == false)                 { break; }
     }
 
-    DBG_PRINT("%s(): guess %s\n", __func__, bcd_get_dbg_info(guess));
+    DBG_PRINT("%s(): guess %s\n", __func__, operand_base_10_get_dbg_info(guess));
 
     retcode = true;
   } while(0);
 
-  bcd_delete(test_diff);
-  bcd_delete(test_rslt);
-  bcd_delete(best_diff);
-  bcd_delete(guess_tmp);
-  bcd_delete(zero);
-  bcd_delete(delta_X_k);
-  bcd_delete(part4);
-  bcd_delete(part3);
-  bcd_delete(part2);
-  bcd_delete(part1);
-  bcd_delete(X_k);
-  bcd_delete(n_f);
-  bcd_delete(A);
+  operand_base_10_delete(test_diff);
+  operand_base_10_delete(test_rslt);
+  operand_base_10_delete(best_diff);
+  operand_base_10_delete(guess_tmp);
+  operand_base_10_delete(zero);
+  operand_base_10_delete(delta_X_k);
+  operand_base_10_delete(part4);
+  operand_base_10_delete(part3);
+  operand_base_10_delete(part2);
+  operand_base_10_delete(part1);
+  operand_base_10_delete(X_k);
+  operand_base_10_delete(n_f);
+  operand_base_10_delete(A);
 
   return retcode;
 }
@@ -482,8 +482,8 @@ operator_exp_nth_root_guess(operator_exp *this,
  *   Returns 0 if unable to create the object.
  */
 operator_exp *
-operator_exp_new(bcd *base,
-                 bcd *exp)
+operator_exp_new(operand_base_10 *base,
+                 operand_base_10 *exp)
 {
   operator_exp *this = (operator_exp *) 0;
 
@@ -491,17 +491,17 @@ operator_exp_new(bcd *base,
   do
   {
     /* Initialize. */
-    if((this = (operator_exp *) malloc(sizeof(*this))) == (operator_exp *) 0) { break; }
+    if((this = (operator_exp *) malloc(sizeof(*this))) == (operator_exp *) 0)         { break; }
 
-    this->base   = bcd_new();
-    this->exp    = bcd_new();
-    this->result = bcd_new();
+    this->base   = operand_base_10_new();
+    this->exp    = operand_base_10_new();
+    this->result = operand_base_10_new();
 
     /* Make copies of the base and exponent. */
-    if((this->base == (bcd *) 0) || (this->exp == (bcd *) 0))                 { break; }
+    if((this->base == (operand_base_10 *) 0) || (this->exp == (operand_base_10 *) 0)) { break; }
     
-    if(bcd_copy(base, this->base) == false)                                   { break; }
-    if(bcd_copy(exp,  this->exp) == false)                                    { break; }
+    if(operand_base_10_copy(base, this->base) == false)                               { break; }
+    if(operand_base_10_copy(exp,  this->exp) == false)                                { break; }
 
     success = true;
   } while(0);
@@ -531,9 +531,9 @@ operator_exp_delete(operator_exp *this)
 
   if(this != (operator_exp *) 0)
   {
-    bcd_delete(this->result);
-    bcd_delete(this->exp);
-    bcd_delete(this->base);
+    operand_base_10_delete(this->result);
+    operand_base_10_delete(this->exp);
+    operand_base_10_delete(this->base);
 
     free(this);
 
@@ -581,39 +581,39 @@ operator_exp_calc(operator_exp *this)
 {
   bool retcode = false;
 
-  bcd *zero      = (bcd *) 0;
-  bcd *one       = (bcd *) 0;
-  bcd *tmp_exp_f = (bcd *) 0;
-  bcd *guess     = (bcd *) 0;
-  bcd *exp_tmp   = (bcd *) 0;
+  operand_base_10 *zero      = (operand_base_10 *) 0;
+  operand_base_10 *one       = (operand_base_10 *) 0;
+  operand_base_10 *tmp_exp_f = (operand_base_10 *) 0;
+  operand_base_10 *guess     = (operand_base_10 *) 0;
+  operand_base_10 *exp_tmp   = (operand_base_10 *) 0;
 
   do
   {
     if(this == (operator_exp *) 0)                                                           { break; }
 
-    if((zero      = bcd_new()) == (bcd *) 0)                                                 { break; }
-    if((one       = bcd_new()) == (bcd *) 0)                                                 { break; }
-    if((tmp_exp_f = bcd_new()) == (bcd *) 0)                                                 { break; }
-    if((guess     = bcd_new()) == (bcd *) 0)                                                 { break; }
-    if((exp_tmp   = bcd_new()) == (bcd *) 0)                                                 { break; }
+    if((zero      = operand_base_10_new()) == (operand_base_10 *) 0)                         { break; }
+    if((one       = operand_base_10_new()) == (operand_base_10 *) 0)                         { break; }
+    if((tmp_exp_f = operand_base_10_new()) == (operand_base_10 *) 0)                         { break; }
+    if((guess     = operand_base_10_new()) == (operand_base_10 *) 0)                         { break; }
+    if((exp_tmp   = operand_base_10_new()) == (operand_base_10 *) 0)                         { break; }
 
     /* If the exponent is negative, convert to its absolute value and set a flag
      * to remind us it was negative.  x^-n = 1/(x^n), so we just need to get the
      * inverse when we're done. */
-    bool is_neg_exponent = (bcd_cmp(this->exp, zero) < 0);
+    bool is_neg_exponent = (operand_base_10_cmp(this->exp, zero) < 0);
     if(is_neg_exponent)
     {
-      if(bcd_copy(this->exp, exp_tmp) == false)                                              { break; }
-      if(bcd_copy(zero, this->exp) == false)                                                 { break; }
-      if(bcd_op_sub(this->exp, exp_tmp) == false)                                            { break; }
+      if(operand_base_10_copy(this->exp, exp_tmp) == false)                                  { break; }
+      if(operand_base_10_copy(zero, this->exp) == false)                                     { break; }
+      if(operand_base_10_op_sub(this->exp, exp_tmp) == false)                                { break; }
     }
 
     /* Check to see if the exponent is a whole number.  If it is, then we can do
      * easy exponentiation. */
     int64_t tmp_exp_i;
-    if(bcd_export(this->exp, &tmp_exp_i) == false)                                           { break; }
-    if(bcd_import(tmp_exp_f, tmp_exp_i) == false)                                            { break; }
-    if(bcd_cmp(this->exp, tmp_exp_f) == 0)
+    if(operand_base_10_export(this->exp, &tmp_exp_i) == false)                               { break; }
+    if(operand_base_10_import(tmp_exp_f, tmp_exp_i) == false)                                { break; }
+    if(operand_base_10_cmp(this->exp, tmp_exp_f) == 0)
     {
       if((retcode = operator_exp_integer_exp(this->base, tmp_exp_i, this->result)) == false) { break; }
     }
@@ -622,7 +622,7 @@ operator_exp_calc(operator_exp *this)
     {
       /* At this point we know the exponent is a fraction.  This means the base
        * must be a positive number.  If it's not, the equation is invalid. */
-     if(bcd_cmp(this->base, zero) < 0)                                                       { break; }
+     if(operand_base_10_cmp(this->base, zero) < 0)                                           { break; }
 
       /* Convert the exponent to a fraction (numerator and denominator). */
       if(operator_exp_to_fraction(this) == false)                                            { break; }
@@ -631,14 +631,14 @@ operator_exp_calc(operator_exp *this)
       if(operator_exp_nth_root_guess(this, guess) == false)                                  { break; }
 
       char buf1[64], buf2[64];
-      if(bcd_to_str(this->base, buf1, sizeof(buf1)) == false)                                { break; }
-      if(bcd_to_str(guess,      buf2, sizeof(buf2)) == false)                                { break; }
+      if(operand_base_10_to_str(this->base, buf1, sizeof(buf1)) == false)                    { break; }
+      if(operand_base_10_to_str(guess,      buf2, sizeof(buf2)) == false)                    { break; }
       DBG_PRINT("%s(): nth_root: this->base %s: this->exp_denominator %lld: guess %s\n",
                  __func__, buf1, this->exp_denominator, buf2);
 
       if(operator_exp_integer_exp(guess, this->exp_numerator, this->result) == false)        { break; }
-      if(bcd_to_str(guess,        buf1, sizeof(buf1)) == false)                              { break; }
-      if(bcd_to_str(this->result, buf2, sizeof(buf2)) == false)                              { break; }
+      if(operand_base_10_to_str(guess,        buf1, sizeof(buf1)) == false)                  { break; }
+      if(operand_base_10_to_str(this->result, buf2, sizeof(buf2)) == false)                  { break; }
       DBG_PRINT("%s(): exp: guess %s: this->exp_numerator %lld: this->result %s\n",
                   __func__, buf1, this->exp_numerator, buf2);
 
@@ -647,17 +647,17 @@ operator_exp_calc(operator_exp *this)
 
     if((retcode == true) && (is_neg_exponent == true))
     {
-      if((retcode = bcd_import(one, 1)) == false)                                      { break; }
-      if((retcode = bcd_op_div(one, this->result)) == false)                           { break; }
-      if((retcode = bcd_copy(one, this->result)) == false)                             { break; }
+      if((retcode = operand_base_10_import(one, 1)) == false)                                { break; }
+      if((retcode = operand_base_10_op_div(one, this->result)) == false)                     { break; }
+      if((retcode = operand_base_10_copy(one, this->result)) == false)                       { break; }
     }
   } while(0);
 
-  bcd_delete(exp_tmp);
-  bcd_delete(guess);
-  bcd_delete(tmp_exp_f);
-  bcd_delete(one);
-  bcd_delete(zero);
+  operand_base_10_delete(exp_tmp);
+  operand_base_10_delete(guess);
+  operand_base_10_delete(tmp_exp_f);
+  operand_base_10_delete(one);
+  operand_base_10_delete(zero);
 
   return retcode;
 }
@@ -674,14 +674,14 @@ operator_exp_calc(operator_exp *this)
  *   false = failure.  *results is undefined.
  */
 bool
-operator_exp_get_result(operator_exp *this,
-                        bcd    *result)
+operator_exp_get_result(operator_exp    *this,
+                        operand_base_10 *result)
 {
   bool retcode = false;
 
-  if((this != (operator_exp *) 0) && (result != (bcd *) 0))
+  if((this != (operator_exp *) 0) && (result != (operand_base_10 *) 0))
   {
-    retcode = bcd_copy(this->result, result);
+    retcode = operand_base_10_copy(this->result, result);
   }
 
   return retcode;
@@ -730,9 +730,9 @@ operator_exp_test(void)
   };
   size_t tests_size = (sizeof(tests) / sizeof(operator_exp_test));
 
-  bcd *base   = (bcd *) 0;
-  bcd *exp    = (bcd *) 0;
-  bcd *result = (bcd *) 0;
+  operand_base_10 *base   = (operand_base_10 *) 0;
+  operand_base_10 *exp    = (operand_base_10 *) 0;
+  operand_base_10 *result = (operand_base_10 *) 0;
 
   do
   {
@@ -742,27 +742,27 @@ operator_exp_test(void)
       operator_exp_test *t = &tests[x];
       printf("%s: %s ^ %s\n", t->name, t->base, t->exp);
 
-      if((base   = bcd_new()) == (bcd *) 0)                         { break; }
-      if((exp    = bcd_new()) == (bcd *) 0)                         { break; }
-      if((result = bcd_new()) == (bcd *) 0)                         { break; }
+      if((base   = operand_base_10_new()) == (operand_base_10 *) 0)   { break; }
+      if((exp    = operand_base_10_new()) == (operand_base_10 *) 0)   { break; }
+      if((result = operand_base_10_new()) == (operand_base_10 *) 0)   { break; }
 
-      /* Load the base and exponent into bcd objects.  We're not testing the bcd
+      /* Load the base and exponent into operand_base_10 objects.  We're not testing the operand_base_10
        * class here, so don't worry too much about error checking. */
       {
         char *p;
-        for(p = t->base; *p != 0; p++) { bcd_add_char(base, *p); }
-        for(p = t->exp;  *p != 0; p++) { bcd_add_char(exp,  *p); }
+        for(p = t->base; *p != 0; p++) { operand_base_10_add_char(base, *p); }
+        for(p = t->exp;  *p != 0; p++) { operand_base_10_add_char(exp,  *p); }
       }
 
       operator_exp *obj;
-      if((obj = operator_exp_new(base, exp)) == (operator_exp *) 0) { break; }
+      if((obj = operator_exp_new(base, exp)) == (operator_exp *) 0)   { break; }
 
-      if(operator_exp_calc(obj) == false)                           { break; }
-      if(operator_exp_get_result(obj, result) == false)             { break; }
-      if(operator_exp_delete(obj) == false)                         { break; }
+      if(operator_exp_calc(obj) == false)                             { break; }
+      if(operator_exp_get_result(obj, result) == false)               { break; }
+      if(operator_exp_delete(obj) == false)                           { break; }
 
       char buf1[1024];
-      if(bcd_to_str(result, buf1, sizeof(buf1)) == false)           { break; }
+      if(operand_base_10_to_str(result, buf1, sizeof(buf1)) == false) { break; }
       printf("  result = %s: t->result %s: ", buf1, t->result);
 
       if(strcmp(buf1, t->result) == 0)
@@ -775,21 +775,21 @@ operator_exp_test(void)
         break;
       }
 
-      if(bcd_delete(base)   != true)                                { break; }
-      base   = (bcd *) 0;
-      if(bcd_delete(exp)    != true)                                { break; }
-      exp    = (bcd *) 0;
-      if(bcd_delete(result) != true)                                { break; }
-      result = (bcd *) 0;
+      if(operand_base_10_delete(base)   != true)                      { break; }
+      base   = (operand_base_10 *) 0;
+      if(operand_base_10_delete(exp)    != true)                      { break; }
+      exp    = (operand_base_10 *) 0;
+      if(operand_base_10_delete(result) != true)                      { break; }
+      result = (operand_base_10 *) 0;
     }
 
     retcode = true;
 
   } while(0);
 
-  bcd_delete(result);
-  bcd_delete(exp);
-  bcd_delete(base);
+  operand_base_10_delete(result);
+  operand_base_10_delete(exp);
+  operand_base_10_delete(base);
 
   return retcode;
 }

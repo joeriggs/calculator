@@ -9,8 +9,8 @@
 
 #include "common.h"
 
-#include "bcd.h"
-#include "hex.h"
+#include "operand_base_10.h"
+#include "operand_base_16.h"
 #include "operand.h"
 
 /******************************************************************************
@@ -21,10 +21,10 @@
 struct operand {
 
   /* This is the number when we're running in decimal mode. */
-  bcd *decnum;
+  operand_base_10 *decnum;
 
   /* This is the number when we're running in hexadecimal mode. */
-  hex *hexnum;
+  operand_base_16 *hexnum;
 
   /* This is a pointer to the number that we're currently using.  It points to
    * either this->decnum or this->hexnum.  This allows all of the op functions
@@ -34,7 +34,7 @@ struct operand {
 
   /* The number base we're currently configured to use.  This refers to things
    * like base_10 or base_16. */
-  operand_base base;
+  operand_type base;
 
   /* A newly-created operand object supports the operand_add_char() method.
    * After the object has been used in an equation calculation it is no longer
@@ -46,10 +46,10 @@ struct operand {
  ******************************** PRIVATE API *********************************
  *****************************************************************************/
 
-/* This is a jump table (indexed via an operand_base value) that defines all of
+/* This is a jump table (indexed via an operand_type value) that defines all of
  * the operations that each data type (base_10, base_16, etc) supports.  If a
  * data type doesn't support an operation, then its pointer will be zero. */
-operand_api *ops[operand_base_max] = { 0, 0 };
+operand_api *ops[operand_type_base_max] = { 0 };
 
 /* This is the standard processing for a binary operation.  It is called from
  * all of the add, sub, mul, etc. functions below.
@@ -72,7 +72,7 @@ operand_api *ops[operand_base_max] = { 0, 0 };
   /* Operands must have the same base. */ \
   if( (op1 != (operand *) 0) && (op2 != (operand *) 0) && (op1->base == op2->base) ) \
   { \
-    operand_base base = op1->base; \
+    operand_type base = op1->base; \
     operand_api_binary_op func = ops[base]->op_##op; \
     if(func != (operand_api_binary_op) 0) \
     { \
@@ -100,7 +100,7 @@ operand_api *ops[operand_base_max] = { 0, 0 };
 #define OPERAND_UNARY_OP(op1, op, retcode) \
   if(op1 != (operand *) 0) \
   { \
-    operand_base base = op1->base; \
+    operand_type base = op1->base; \
     operand_api_unary_op func = ops[base]->op_##op; \
     if(func != (operand_api_unary_op) 0) \
     { \
@@ -223,7 +223,7 @@ operand_op_exp(operand *op1,
   return retcode;
 }
 
-/* This is the hexadecimal AND function.
+/* This is the AND function.
  *
  * Input:
  *   op1  = A pointer to the first operand.  The result is returned in this one.
@@ -245,7 +245,7 @@ operand_op_and(operand *op1,
   return retcode;
 }
 
-/* This is the hexadecimal OR function.
+/* This is the OR function.
  *
  * Input:
  *   op1  = A pointer to the first operand.  The result is returned in this one.
@@ -268,7 +268,7 @@ operand_op_or(operand *op1,
 }
 
 
-/* This is the hexadecimal XOR function.
+/* This is the XOR function.
  *
  * Input:
  *   op1  = A pointer to the operand object.
@@ -290,7 +290,7 @@ operand_op_xor(operand *op1,
   return retcode;
 }
 
-/* This is the hexadecimal NOT function.
+/* This is the NOT function.
  *
  * Input:
  *   this = A pointer to the only important operand.  NOT is a UNARY operation.
@@ -330,8 +330,8 @@ operand_initialize(void)
 {
   bool retcode = false;
 
-  if(((ops[operand_base_10] = bcd_return_ops()) != (operand_api *) 0) &&
-     ((ops[operand_base_16] = hex_return_ops()) != (operand_api *) 0))
+  if(((ops[operand_type_base_10] = operand_base_10_return_ops()) != (operand_api *) 0) &&
+     ((ops[operand_type_base_16] = operand_base_16_return_ops()) != (operand_api *) 0))
   {
     retcode = true;
   }
@@ -350,7 +350,7 @@ operand_initialize(void)
  *   Returns 0 if unable to create the object.
  */
 operand *
-operand_new(operand_base base)
+operand_new(operand_type base)
 {
   operand *this = malloc(sizeof(*this));
 
@@ -359,9 +359,9 @@ operand_new(operand_base base)
     memset(this, 0, sizeof(*this));
     this->add_char_allowed = true;
 
-    if( ((this->decnum = bcd_new()) == (bcd *) 0) ||
-        ((this->hexnum = hex_new()) == (hex *) 0) ||
-        (operand_set_base(this, operand_base_10) == false) )
+    if( ((this->decnum = operand_base_10_new()) == (operand_base_10 *) 0) ||
+        ((this->hexnum = operand_base_16_new()) == (operand_base_16 *) 0) ||
+        (operand_set_base(this, operand_type_base_10) == false) )
     {
       operand_delete(this);
       this = (operand *) 0;
@@ -387,8 +387,8 @@ operand_delete(operand *this)
 
   if(this != (operand *) 0)
   {
-    retcode = bcd_delete(this->decnum);
-    retcode = hex_delete(this->hexnum);
+    retcode = operand_base_10_delete(this->decnum);
+    retcode = operand_base_16_delete(this->hexnum);
 
     free(this);
   }
@@ -409,12 +409,12 @@ operand_delete(operand *this)
  */
 bool
 operand_get_base(operand *this,
-                 operand_base *base)
+                 operand_type *base)
 {
   bool retcode = false;
 
   /* Check parameters and pick a reasonable default answer. */
-  if(base != (operand_base *) 0)
+  if(base != (operand_type *) 0)
   {
     if(this != (operand *) 0)
     {
@@ -439,7 +439,7 @@ operand_get_base(operand *this,
  */
 bool
 operand_set_base(operand *this,
-                 operand_base base)
+                 operand_type base)
 {
   bool retcode = false;
 
@@ -453,21 +453,21 @@ operand_set_base(operand *this,
 
       switch(base)
       {
-      case operand_base_10:
+      case operand_type_base_10:
         this->base = base;
         this->current_num = this->decnum;
-        if(hex_export(this->hexnum, &new_num) == true)
+        if(operand_base_16_export(this->hexnum, &new_num) == true)
         {
-          retcode = bcd_import(this->decnum, new_num);
+          retcode = operand_base_10_import(this->decnum, new_num);
         }
         break;
       
-      case operand_base_16:
+      case operand_type_base_16:
         this->base = base;
         this->current_num = this->hexnum;
-        if(bcd_export(this->decnum, &new_num) == true)
+        if(operand_base_10_export(this->decnum, &new_num) == true)
         {
-          retcode = hex_import(this->hexnum, new_num);
+          retcode = operand_base_16_import(this->hexnum, new_num);
         }
         break;
 
@@ -495,7 +495,7 @@ operand_set_base(operand *this,
  *   false = No, c is NOT a valid operand character.
  */
 bool
-operand_add_char_is_valid_operand(operand_base base,
+operand_add_char_is_valid_operand(operand_type base,
                                   char c)
 {
   bool retcode = false;
@@ -503,12 +503,12 @@ operand_add_char_is_valid_operand(operand_base base,
   /* Let the class for each number type decide if the character is valid. */
   switch(base)
   {
-  case operand_base_10:
-    retcode = bcd_add_char_is_valid_operand(c);
+  case operand_type_base_10:
+    retcode = operand_base_10_add_char_is_valid_operand(c);
     break;
 
-  case operand_base_16:
-    retcode = hex_add_char_is_valid_operand(c);
+  case operand_type_base_16:
+    retcode = operand_base_16_add_char_is_valid_operand(c);
     break;
 
   default:
@@ -564,17 +564,17 @@ operand_add_char(operand *this,
   {
     /* Get the base for the operand, and then pass the character to the
      * applicable ADT. */
-    operand_base base;
+    operand_type base;
     if(operand_get_base(this, &base) == true)
     {
       switch(base)
       {
-      case operand_base_10:
-        retcode = bcd_add_char(this->decnum, c);
+      case operand_type_base_10:
+        retcode = operand_base_10_add_char(this->decnum, c);
         break;
 
-      case operand_base_16:
-        retcode = hex_add_char(this->hexnum, c);
+      case operand_type_base_16:
+        retcode = operand_base_16_add_char(this->hexnum, c);
         break;
 
       default:
@@ -612,12 +612,12 @@ bool operand_to_str(operand *this,
   {
     switch(this->base)
     {
-    case operand_base_10:
-      retcode = bcd_to_str(this->decnum, buf, buf_size);
+    case operand_type_base_10:
+      retcode = operand_base_10_to_str(this->decnum, buf, buf_size);
       break;
 
-    case operand_base_16:
-      retcode = hex_to_str(this->hexnum, buf, buf_size);
+    case operand_type_base_16:
+      retcode = operand_base_16_to_str(this->hexnum, buf, buf_size);
       break;
 
     default:
@@ -644,12 +644,12 @@ operand_test(void)
   typedef struct operand_test {
     const char  *src;
     const char  *dst;
-    operand_base base;
+    operand_type base;
   } operand_test;
   operand_test tests[] = {
-    {    "123",         "123",     operand_base_10 }, // Simple integer value.
-    { "123000",     "123,000",     operand_base_10 }, // Integer with trailing zeroes.
-    {    "123.456",     "123.456", operand_base_10 }, // Simple floating point value.
+    {    "123",         "123",     operand_type_base_10 }, // Simple integer value.
+    { "123000",     "123,000",     operand_type_base_10 }, // Integer with trailing zeroes.
+    {    "123.456",     "123.456", operand_type_base_10 }, // Simple floating point value.
   };
   size_t operand_test_size = (sizeof(tests) / sizeof(operand_test));
 
@@ -671,7 +671,7 @@ operand_test(void)
     }
 
     DBG_PRINT("operand_get_base()\n");
-    operand_base base;
+    operand_type base;
     if(operand_get_base(this, &base) != true)                        return false;
     if(base != t->base)                                              return false;
 

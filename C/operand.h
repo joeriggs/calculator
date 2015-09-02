@@ -9,10 +9,10 @@
 /* This is a list of the supported number bases.  NOTE that these values are
  * used as indexes into the operand_ops table in operand.c. */
 typedef enum {
-  operand_base_10 = 1,
-  operand_base_16,
-  operand_base_max
-} operand_base;
+  operand_type_base_10 = 1,
+  operand_type_base_16,
+  operand_type_base_max
+} operand_type;
 
 typedef struct operand operand;
 
@@ -35,15 +35,15 @@ bool operand_op_not(operand *op);
 
 bool operand_initialize(void);
 
-operand *operand_new(operand_base base);
+operand *operand_new(operand_type base);
 
 bool operand_delete(operand *this);
 
-bool operand_get_base(operand *this, operand_base *base);
+bool operand_get_base(operand *this, operand_type *base);
 
-bool operand_set_base(operand *this, operand_base base);
+bool operand_set_base(operand *this, operand_type base);
 
-bool operand_add_char_is_valid_operand(operand_base base, char c);
+bool operand_add_char_is_valid_operand(operand_type base, char c);
 
 bool operand_add_char_allowed(operand *this);
 

@@ -24,7 +24,7 @@ There are 3 switches that you can add to the "make" command.  They are:
 
   * It will build with optimization turned off and debug symbols turned on.  This allows you to debug the program with gdb.
 
-  * If will turn on console debug info.  There is a lot of console debug information in the source code files.  It is useful for debugging problems.  Note that bcd.c contains per-method debug info that is controlled via a series of **BCD_DBG_...** switches at the top of the module.
+  * If will turn on console debug info.  There is a lot of console debug information in the source code files.  It is useful for debugging problems.  Note that operand_base_10.c contains per-method debug info that is controlled via a series of **BCD_DBG_...** switches at the top of the module.
 
 * **clean** - Run this command if you want to clean up after a build.  This is particularly useful if you want to switch back and forth between running the real **calculator** program and running the **test** program.  For example:
 
@@ -50,9 +50,9 @@ The class hierarchy looks like this:
 
     * **operator_exp** is used to perform exponent operations.  Floating point exponentiation is fairly complex, so that functionality is encapsulated in a separate class in order to avoid making the BCD class overly complicated.
 
-    * **bcd** provides a binary coded decimal (bcd) data representation that allows the calculator to do decimal math without running into problems caused by IEEE 754 float or double issues.
+    * **operand_base_10** provides a binary coded decimal (bcd) data representation that allows the calculator to do decimal math without running into problems caused by IEEE 754 float or double issues.
 
-    * **hex** provides a hexadecimal data representation that allows the calculator to do hex math and bit manipulation operations.
+    * **operand_base_16** provides a hexadecimal data representation that allows the calculator to do hex math and bit manipulation operations.
 
   * **operator** is used to store each operator.  It contains members that know how to execute the steps necessary to perform the operator.  The calculator supports unary and binary operators.
 

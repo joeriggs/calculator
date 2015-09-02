@@ -13,7 +13,7 @@
 
 #include "common.h"
 
-#include "bcd.h"
+#include "operand_base_10.h"
 #include "operator_exp.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -39,7 +39,7 @@
  ****************************** CLASS DEFINITION ******************************
  *****************************************************************************/
 
-/* The number of digits the user can push to bcd_add_char(). */
+/* The number of digits the user can push to operand_base_10_add_char(). */
 #define BCD_NUM_DIGITS 16 // Must be a multiple of 2.
 
 #if (BCD_NUM_DIGITS >= 16)
@@ -98,11 +98,11 @@ typedef uint16_t significand_large_section_t;
 /* The number of data elements required to hold all of the digits. */
 #define SIGNIFICAND_SECTIONS_INTERNAL (BCD_NUM_DIGITS_INTERNAL / SIGNIFICAND_DIGITS_PER_SECTION)
 
-/* The definition of the significand that is located in each bcd object. */
+/* The definition of the significand that is located in each operand_base_10 object. */
 typedef struct { significand_section_t s[SIGNIFICAND_SECTIONS_INTERNAL]; } significand_t;
 
-/* This is the bcd class. */
-struct bcd {
+/* This is the operand_base_10 class. */
+struct operand_base_10 {
 
   /* This is the significand.  Each nybble equals one decimal digit.*/
   significand_t significand;
@@ -129,13 +129,13 @@ struct bcd {
  ******************************** OPS STRUCT **********************************
  *****************************************************************************/
 
-operand_api bcd_ops = {
+operand_api operand_base_10_ops = {
   .base_name = "BCD",
-  .op_add = (operand_api_binary_op) bcd_op_add,
-  .op_sub = (operand_api_binary_op) bcd_op_sub,
-  .op_mul = (operand_api_binary_op) bcd_op_mul,
-  .op_div = (operand_api_binary_op) bcd_op_div,
-  .op_exp = (operand_api_binary_op) bcd_op_exp
+  .op_add = (operand_api_binary_op) operand_base_10_op_add,
+  .op_sub = (operand_api_binary_op) operand_base_10_op_sub,
+  .op_mul = (operand_api_binary_op) operand_base_10_op_mul,
+  .op_div = (operand_api_binary_op) operand_base_10_op_div,
+  .op_exp = (operand_api_binary_op) operand_base_10_op_exp
 };
 
 /******************************************************************************
@@ -728,8 +728,8 @@ bcd_to_str_decimal(significand_t *significand,
 
       /* How many digits are there?  The possibilities are in this order:
        *
-       * 1. If (char_count > 0) (i.e. this was populated via bcd_add_char(),
-       *    then (digit_count = char_count).
+       * 1. If (char_count > 0) (i.e. this was populated via
+       *    operand_base_10_add_char(), then (digit_count = char_count).
        *
        * 2. max((exponent + 1), (non-zero digits)).
        *    2A. (exponent + 1) is the minimum number of digits.  For example,
@@ -1086,12 +1086,12 @@ bcd_sig_remove_leading_zeroes(significand_t *sig,
  *   false = failure.
  */
 bool
-bcd_op_add(bcd *op1,
-           bcd *op2)
+operand_base_10_op_add(operand_base_10 *op1,
+                       operand_base_10 *op2)
 {
   bool retcode = false;
 
-  if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
+  if((op1 != (operand_base_10 *) 0) && (op2 != (operand_base_10 *) 0))
   {
     do
     {
@@ -1172,19 +1172,19 @@ bcd_op_add(bcd *op1,
  *   false = failure.
  */
 bool
-bcd_op_sub(bcd *op1,
-           bcd *op2)
+operand_base_10_op_sub(operand_base_10 *op1,
+                       operand_base_10 *op2)
 {
   bool retcode = false;
 
-  if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
+  if((op1 != (operand_base_10 *) 0) && (op2 != (operand_base_10 *) 0))
   {
     do
     {
-      bcd *op2_copy = (bcd *) 0;
+      operand_base_10 *op2_copy = (operand_base_10 *) 0;
 
-      if((op2_copy = bcd_new()) == (bcd *) 0) { break; }
-      if(bcd_copy(op2, op2_copy) == false)    { break; }
+      if((op2_copy = operand_base_10_new()) == (operand_base_10 *) 0) { break; }
+      if(operand_base_10_copy(op2, op2_copy) == false)                { break; }
 
       /* Start with the raw significands. */
       significand_t *sig1 = &op1->significand;
@@ -1203,7 +1203,7 @@ bcd_op_sub(bcd *op1,
       /* 0 - op2 = -op2. */
       else if(bcd_sig_is_zero(&op1->significand) == true)
       {
-        if(bcd_copy(op2, op1) == true)
+        if(operand_base_10_copy(op2, op1) == true)
         {
           op1->sign = (op1->sign == true) ? false : true;
           retcode = true;
@@ -1261,12 +1261,12 @@ bcd_op_sub(bcd *op1,
         BCD_PRINT(BCD_DBG_OP_SUB, "%s():          SHIFT: %s %d %d.\n", __func__, bcd_sig_to_str(sig1), op1->exponent, op1->sign);
 
         /* Done.  Set the object to reflect the fact that we calculated the value.
-         * This is no longer data that came in through bcd_add_char(). */
+         * This is no longer data that came in through operand_base_10_add_char(). */
         op1->char_count        = 0;
         op1->got_decimal_point = false;
       }
 
-      bcd_delete(op2_copy);
+      operand_base_10_delete(op2_copy);
 
     } while(0);
   }
@@ -1286,12 +1286,12 @@ bcd_op_sub(bcd *op1,
  *   false = failure.
  */
 bool
-bcd_op_mul(bcd *op1,
-           bcd *op2)
+operand_base_10_op_mul(operand_base_10 *op1,
+                       operand_base_10 *op2)
 {
   bool retcode = false;
 
-  if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
+  if((op1 != (operand_base_10 *) 0) && (op2 != (operand_base_10 *) 0))
   {
     do
     {
@@ -1422,7 +1422,7 @@ bcd_op_mul(bcd *op1,
       BCD_PRINT(BCD_DBG_OP_MUL, "%s(): OUT: %s %s %d\n", __func__, bcd_sig_to_str(&op1->significand), op1->sign ? "neg" : "pos", op1->exponent);
 
       /* Done.  Set the object to reflect the fact that we calculated the value.
-       * This is no longer data that came in through bcd_add_char(). */
+       * This is no longer data that came in through operand_base_10_add_char(). */
       op1->char_count        = 0;
       op1->got_decimal_point = false;
     } while(0);
@@ -1443,12 +1443,12 @@ bcd_op_mul(bcd *op1,
  *   false = failure.
  */
 bool
-bcd_op_div(bcd *op1,
-           bcd *op2)
+operand_base_10_op_div(operand_base_10 *op1,
+                       operand_base_10 *op2)
 {
   bool retcode = false;
 
-  if((op1 != (bcd *) 0) && (op2 != (bcd *) 0))
+  if((op1 != (operand_base_10 *) 0) && (op2 != (operand_base_10 *) 0))
   {
     do
     {
@@ -1590,21 +1590,21 @@ bcd_op_div(bcd *op1,
       op1->sign = (op1->sign == op2->sign) ? false : true;
 
       /* Now we need to round the result (if necessary).  We'll use the regular
-       * bcd_op_add() function to do that step. */
+       * operand_base_10_op_add() function to do that step. */
       char c;
       if((c = bcd_sig_get_digit(&result_lo, 0)) == 0xF) break;
       if(c > 4)
       {
-        bcd *round;
-        if((round = bcd_new()) == (bcd *) NULL) break;
+        operand_base_10 *round;
+        if((round = operand_base_10_new()) == (operand_base_10 *) NULL) break;
         if(bcd_sig_set_digit(&round->significand, (BCD_NUM_DIGITS_INTERNAL - 1), 1) == false) break;
         round->sign = op1->sign;
         round->exponent = op1->exponent;
-        if(bcd_op_add(op1, round) == false) break;
+        if(operand_base_10_op_add(op1, round) == false) break;
       }
 
       /* Done.  Set the object to reflect the fact that we calculated the value.
-       * This is no longer data that came in through bcd_add_char(). */
+       * This is no longer data that came in through operand_base_10_add_char(). */
       op1->char_count        = 0;
       op1->got_decimal_point = false;
       retcode                = true;
@@ -1626,8 +1626,8 @@ bcd_op_div(bcd *op1,
  *   false = failure.
  */
 bool
-bcd_op_exp(bcd *op1,
-           bcd *op2)
+operand_base_10_op_exp(operand_base_10 *op1,
+                       operand_base_10 *op2)
 {
   bool retcode = false;
 
@@ -1635,13 +1635,13 @@ bcd_op_exp(bcd *op1,
   {
     operator_exp *fp;
 
-    if((op1 == (bcd *) 0) || (op2 == (bcd *) 0))                { break; }
+    if((op1 == (operand_base_10 *) 0) || (op2 == (operand_base_10 *) 0)) { break; }
 
-    if((fp = operator_exp_new(op1, op2)) == (operator_exp *) 0) { break; }
+    if((fp = operator_exp_new(op1, op2)) == (operator_exp *) 0)          { break; }
 
-    if(operator_exp_calc(fp) == false)                          { break; }
+    if(operator_exp_calc(fp) == false)                                   { break; }
 
-    if(operator_exp_get_result(fp, op1) == false)               { break; }
+    if(operator_exp_get_result(fp, op1) == false)                        { break; }
 
     retcode = operator_exp_delete(fp);
   } while(0);
@@ -1663,12 +1663,13 @@ bcd_op_exp(bcd *op1,
  *   Returns 0 if unable to return the pointer to the ops.
  */
 operand_api *
-bcd_return_ops(void)
+operand_base_10_return_ops(void)
 {
-  return &bcd_ops;
+  return &operand_base_10_ops;
 }
 
-/* Create a new bcd object.  This object can be used to access the bcd class.
+/* Create a new operand_base_10 object.  This object can be used to access the
+ * operand_base_10 class.
  *
  * Input:
  *   N/A.
@@ -1677,38 +1678,38 @@ bcd_return_ops(void)
  *   Returns a pointer to the object.
  *   Returns 0 if unable to create the object.
  */
-bcd *
-bcd_new(void)
+operand_base_10 *
+operand_base_10_new(void)
 {
-  bcd *this = malloc(sizeof(*this));
+  operand_base_10 *this = malloc(sizeof(*this));
 
-  if(this != (bcd *) 0)
+  if(this != (operand_base_10 *) 0)
   {
-    if(bcd_import(this, 0) == false)
+    if(operand_base_10_import(this, 0) == false)
     {
-      bcd_delete(this);
-      this = (bcd *) 0;
+      operand_base_10_delete(this);
+      this = (operand_base_10 *) 0;
     }
   }
 
   return this;
 }
 
-/* Delete a bcd object that was created by bcd_new().
+/* Delete a operand_base_10 object that was created by operand_base_10_new().
  *
  * Input:
- *   this = A pointer to the bcd object.
+ *   this = A pointer to the operand_base_10 object.
  *
  * Output:
  *   true  = success.  this is deleted.
  *   false = failure.  this is undefined.
  */
 bool
-bcd_delete(bcd *this)
+operand_base_10_delete(operand_base_10 *this)
 {
   bool retcode = false;
 
-  if(this != (bcd *) 0)
+  if(this != (operand_base_10 *) 0)
   {
     free(this);
     retcode = true;
@@ -1718,7 +1719,7 @@ bcd_delete(bcd *this)
 }
 
 /* Check to see if the specified character is a valid operand character that
- * can be passed to bcd_add_char().
+ * can be passed to operand_base_10_add_char().
  *
  * Input:
  *   c = The character to check.
@@ -1728,14 +1729,14 @@ bcd_delete(bcd *this)
  *   false = No, c is NOT a valid operand character.
  */
 bool
-bcd_add_char_is_valid_operand(char c)
+operand_base_10_add_char_is_valid_operand(char c)
 {
   bool retcode = ((c == '.') || ((c & 0xDF) == 'S') || ((c >= '0') && (c <= '9'))) ? true : false;
 
   return retcode;
 }
 
-/* Attempt to add a character to the bcd object.  The character is checked to
+/* Attempt to add a character to the operand_base_10 object.  It's checked to
  * see if it's a valid part of a decimal number.  If it's valid, it is added.
  * Note that it's possible for a character to be dropped because we don't have
  * room for it.  Or if we get multiple decimal points we'll drop all subsequent
@@ -1744,7 +1745,7 @@ bcd_add_char_is_valid_operand(char c)
  * We only allow the user to insert 16 digits.  After that, we drop them.
  *
  * Input:
- *   this = A pointer to the bcd object.
+ *   this = A pointer to the operand_base_10 object.
  *
  *   c    = The char to add.  If it's valid, we use it.  If it's not valid,
  *          then we return false.
@@ -1754,12 +1755,12 @@ bcd_add_char_is_valid_operand(char c)
  *   false = failure.  c is NOT a number OR we were unable to add c to this.
  */
 bool
-bcd_add_char(bcd *this,
-             char c)
+operand_base_10_add_char(operand_base_10 *this,
+                         char             c)
 {
   bool retcode = false;
 
-  if(this != (bcd *) 0)
+  if(this != (operand_base_10 *) 0)
   {
     /* If it's a decimal point, prepare to start doing decimal math.  If we
      * already got a decimal point, then this one is silently dropped. */
@@ -1816,7 +1817,7 @@ bcd_add_char(bcd *this,
 /* Create an ASCII string that represents the current value of the number.
  *
  * Input:
- *   this     = A pointer to the bcd object.
+ *   this     = A pointer to the operand_base_10 object.
  *
  *   buf      = The caller-supplied buffer to build the string in.
  *
@@ -1830,26 +1831,26 @@ bcd_add_char(bcd *this,
  *   false = failure.  buf is undefined.
  */
 bool
-bcd_to_str(bcd  *this,
-           char  *buf,
-           size_t buf_size)
+operand_base_10_to_str(operand_base_10  *this,
+                       char             *buf,
+                       size_t            buf_size)
 {
   bool retcode = false;
 
-  if( (this != (bcd *) 0) && (buf != (char *) 0) && (buf_size > 0) )
+  if( (this != (operand_base_10 *) 0) && (buf != (char *) 0) && (buf_size > 0) )
   {
     BCD_PRINT(BCD_DBG_TO_STR, "%s(): %s, %d, %d, %d.\n", __func__,
               bcd_sig_to_str(&this->significand), this->exponent, this->got_decimal_point, this->sign);
 
-    bcd *val = (bcd *) 0;
-    bcd *one = (bcd *) 0;
+    operand_base_10 *val = (operand_base_10 *) 0;
+    operand_base_10 *one = (operand_base_10 *) 0;
 
     do
     {
       /* Make a copy of this.  We might need to round it up, but we don't want
        * to change this.  So we'll change the copy. */
-      if((val = bcd_new()) == (bcd *) 0)                                              { break; }
-      if(bcd_copy(this, val) == false)                                                { break; }
+      if((val = operand_base_10_new()) == (operand_base_10 *) 0)                      { break; }
+      if(operand_base_10_copy(this, val) == false)                                    { break; }
 
       /* Figure out whether to use standard or scientific notation.
        * 1. If the exponent > BCD_NUM_DIGITS, use scientific.
@@ -1879,13 +1880,13 @@ bcd_to_str(bcd  *this,
       /* If we need to round up, do it here. */
       if(carry_digit >= 5)
       {
-        if((one = bcd_new()) == (bcd *) 0)                                            { break; }
+        if((one = operand_base_10_new()) == (operand_base_10 *) 0)                    { break; }
         {
-          if(bcd_import(one, 1) == false)                                             { break; }
+          if(operand_base_10_import(one, 1) == false)                                 { break; }
           if(bcd_shift_significand(&one->significand, (BCD_NUM_DIGITS - 1)) == false) { break; }
           one->sign     = val->sign;
           one->exponent = val->exponent;
-          if(bcd_op_add(val, one) == false)                                           { break; }
+          if(operand_base_10_op_add(val, one) == false)                               { break; }
         }
         BCD_PRINT(BCD_DBG_TO_STR, "%s(): ROUNDED: %s, %d, %d, %d.\n", __func__,
                   bcd_sig_to_str(&val->significand), val->exponent, val->got_decimal_point, val->sign);
@@ -1944,8 +1945,8 @@ bcd_to_str(bcd  *this,
       }
     } while(0);
 
-    bcd_delete(one);
-    bcd_delete(val);
+    operand_base_10_delete(one);
+    operand_base_10_delete(val);
   }
 
   return retcode;
@@ -1955,21 +1956,22 @@ bcd_to_str(bcd  *this,
  * member makes a copy.
  *
  * Input:
- *   src = A pointer to the bcd object.
+ *   src = A pointer to the operand_base_10 object.
  *
- *   dst = A pointer to a pre-allocated bcd object that we will copy into.
+ *   dst = A pointer to a pre-allocated operand_base_10 object that we will
+ *         copy into.
  *
  * Output:
  *   true  = success.  src has been copied to dst.
  *   false = failure.  The contents of dst is undefined.
  */
 bool
-bcd_copy(bcd *src,
-         bcd *dst)
+operand_base_10_copy(operand_base_10 *src,
+                     operand_base_10 *dst)
 {
   bool retcode = false;
 
-  if( (src != (bcd *) 0) && (dst != (bcd *) 0) )
+  if( (src != (operand_base_10 *) 0) && (dst != (operand_base_10 *) 0) )
   {
     if((retcode = bcd_sig_copy(&src->significand, &dst->significand)) == true)
     {
@@ -1983,12 +1985,12 @@ bcd_copy(bcd *src,
   return retcode;
 }
 
-/* Compare 2 bcd objects.
+/* Compare 2 operand_base_10 objects.
  *
  * Input:
- *   obj1 = A pointer to one of the bcd objects.
+ *   obj1 = A pointer to one of the operand_base_10 objects.
  *
- *   obj2 = A pointer to one of the bcd objects.
+ *   obj2 = A pointer to one of the operand_base_10 objects.
  *
  * Output:
  *   -1 if *obj1 <  *obj2.
@@ -1996,15 +1998,15 @@ bcd_copy(bcd *src,
  *    1 if *obj1 >  *obj2.
  */
 int
-bcd_cmp(bcd *obj1,
-        bcd *obj2)
+operand_base_10_cmp(operand_base_10 *obj1,
+                    operand_base_10 *obj2)
 {
   int retval = 0;
 
   BCD_PRINT(BCD_DBG_CMP, "%s(): %s vs %s.\n", __func__,
             bcd_sig_to_str(&obj1->significand), bcd_sig_to_str(&obj2->significand));
 
-  if( (obj1 != (bcd *) 0) && (obj2 != (bcd *) 0) )
+  if( (obj1 != (operand_base_10 *) 0) && (obj2 != (operand_base_10 *) 0) )
   {
     /* Negatives are always less than positives. */
     if((obj1->sign == true) && (obj2->sign == false))
@@ -2021,18 +2023,18 @@ bcd_cmp(bcd *obj1,
     /* If they're either both positive or both negative. */
     else
     {
-      bcd *tmp_obj1 = bcd_new();
-      bcd *tmp_obj2 = bcd_new();
-      if((tmp_obj1 != (bcd *) 0) &&
-         (tmp_obj2 != (bcd *) 0) &&
-         (bcd_copy(obj1, tmp_obj1) == true) &&
-         (bcd_copy(obj2, tmp_obj2) == true))
+      operand_base_10 *tmp_obj1 = operand_base_10_new();
+      operand_base_10 *tmp_obj2 = operand_base_10_new();
+      if((tmp_obj1 != (operand_base_10 *) 0) &&
+         (tmp_obj2 != (operand_base_10 *) 0) &&
+         (operand_base_10_copy(obj1, tmp_obj1) == true) &&
+         (operand_base_10_copy(obj2, tmp_obj2) == true))
       {
         /* Compare 2 positive numbers. */
         if((obj1->sign == false) && (obj2->sign == false))
         {
           BCD_PRINT(BCD_DBG_CMP, "%s(): Comparing positive numbers.\n", __func__);
-          if(bcd_op_sub(tmp_obj1, tmp_obj2) == true)
+          if(operand_base_10_op_sub(tmp_obj1, tmp_obj2) == true)
           {
             if(bcd_sig_is_zero(&tmp_obj1->significand)) { retval =  0; }
             else if(tmp_obj1->sign == true)             { retval = -1; }
@@ -2044,7 +2046,7 @@ bcd_cmp(bcd *obj1,
         /* Compare 2 negative numbers. */
         else
         {
-          if(bcd_op_sub(tmp_obj1, tmp_obj2) == true)
+          if(operand_base_10_op_sub(tmp_obj1, tmp_obj2) == true)
           {
             if(bcd_sig_is_zero(&tmp_obj1->significand)) { retval =  0; }
             else if(tmp_obj1->sign == false)            { retval =  1; }
@@ -2053,8 +2055,8 @@ bcd_cmp(bcd *obj1,
         }
       }
 
-      bcd_delete(tmp_obj2);
-      bcd_delete(tmp_obj1);
+      operand_base_10_delete(tmp_obj2);
+      operand_base_10_delete(tmp_obj1);
     }
   }
 
@@ -2065,7 +2067,7 @@ bcd_cmp(bcd *obj1,
  * doesn't allow you to import an IEEE floating point value.
  *
  * Input:
- *   this     = A pointer to the bcd object.
+ *   this     = A pointer to the operand_base_10 object.
  *
  *   src      = A signed integer value to use to seed the object.  If there is
  *              a value already loaded into this object, it will be erased.
@@ -2075,14 +2077,14 @@ bcd_cmp(bcd *obj1,
  *   false = failure.  The contents of this is undefined.
  */
 bool
-bcd_import(bcd     *this,
-           int64_t  src)
+operand_base_10_import(operand_base_10 *this,
+                       int64_t          src)
 {
   bool retcode = false;
 
   do
   {
-    if(this == (bcd *) 0)                                          { break; }
+    if(this == (operand_base_10 *) 0)                              { break; }
 
     if(bcd_sig_initialize(&this->significand) == false)            { break; }
 
@@ -2122,7 +2124,7 @@ bcd_import(bcd     *this,
  * doesn't allow you to export to an IEEE floating point value.
  *
  * Input:
- *   this     = A pointer to the bcd object.
+ *   this     = A pointer to the operand_base_10 object.
  *
  *   dst      = A pointer to a signed integer value that will receive the value
  *              of this.
@@ -2132,14 +2134,14 @@ bcd_import(bcd     *this,
  *   false = failure.  The contents of dst is undefined.
  */
 bool
-bcd_export(bcd     *this,
-           int64_t *dst)
+operand_base_10_export(operand_base_10 *this,
+                       int64_t         *dst)
 {
   bool retcode = false;
 
   do
   {
-    if((this == (bcd *) 0) || (dst == (int64_t *) 0))             { break; }
+    if((this == (operand_base_10 *) 0) || (dst == (int64_t *) 0)) { break; }
 
     *dst = 0;
 
@@ -2169,19 +2171,19 @@ bcd_export(bcd     *this,
 /* Return an ASCII string that contains debug information about this.
  *
  * Input:
- *   this     = A pointer to the bcd object.
+ *   this     = A pointer to the operand_base_10 object.
  *
  * Output:
  *   Returns a pointer to a string that contains the debug info.
  */
 const char *
-bcd_get_dbg_info(bcd *this)
+operand_base_10_get_dbg_info(operand_base_10 *this)
 {
   char *retval = "UNKNOWN";
 
   do
   {
-    if(this == (bcd *) 0)                                               { break; }
+    if(this == (operand_base_10 *) 0)                                                   { break; }
 
     /* This is a collection of buffers that is used for building strings.
      * NOTE: The size has to be a power of 2. */
@@ -2207,7 +2209,7 @@ bcd_get_dbg_info(bcd *this)
 
     if(sig_msgs[sig_msgs_index] != (char *) 0)
     {
-      if(bcd_to_str(this, sig_msgs[sig_msgs_index], sig_msg_size) == false) { break; }
+      if(operand_base_10_to_str(this, sig_msgs[sig_msgs_index], sig_msg_size) == false) { break; }
 
       retval = sig_msgs[sig_msgs_index];
       sig_msgs_index = ((sig_msgs_index + 1) % sig_msgs_size);
@@ -2228,7 +2230,7 @@ bcd_get_dbg_info(bcd *this)
 #define TEST_SPECIAL
 
 bool
-bcd_test(void)
+operand_base_10_test(void)
 {
   bool retcode = false;
 
@@ -2363,14 +2365,14 @@ bcd_test(void)
 
 #ifdef TEST_CHAR_INPUT
   /* Loop through some decimal numbers.  This tests the basic functionality of
-   * the bcd class.  We're checking to make sure it can handle any type of
-   * decimal number that we might throw at it. */
-  typedef struct bcd_test {
+   * the operand_base_10 class.  We're checking to make sure it can handle any
+   * type of decimal number that we might throw at it. */
+  typedef struct operand_base_10_test {
     const char  *name;
     const char  *src;
     const char  *dst;
-  } bcd_test;
-  bcd_test tests[] = {
+  } operand_base_10_test;
+  operand_base_10_test tests[] = {
     { "BCD_01",                ""                 ,                     "0"                 }, // A blank object.
     { "BCD_02",               "1"                 ,                     "1"                 }, // A single-digit number (exp = 0).
     { "BCD_03",             "123"                 ,                   "123"                 }, // Simple integer value (exp > 0).
@@ -2387,175 +2389,175 @@ bcd_test(void)
     { "BCD_14",                ".000123"          ,                     "0.000123"          },
     { "BCD_15","1222333444555666"                 , "1,222,333,444,555,666"                 }, // Commas in the right place.
   };
-  size_t bcd_test_size = (sizeof(tests) / sizeof(bcd_test));
+  size_t operand_base_10_test_size = (sizeof(tests) / sizeof(operand_base_10_test));
 
   {
     int x;
-    for(x = 0; x < bcd_test_size; x++)
+    for(x = 0; x < operand_base_10_test_size; x++)
     {
-      bcd_test *t = &tests[x];
+      operand_base_10_test *t = &tests[x];
       printf("  %s: '%s'.\n", t->name, t->src);
 
-      bcd *this = bcd_new();
-      if((retcode = (this != (bcd *) 0)) != true)                                             return false;
+      operand_base_10 *this = operand_base_10_new();
+      if((retcode = (this != (operand_base_10 *) 0)) != true)                                 return false;
 
       const char *src = t->src;
       while(*src)
       {
-        if((retcode = bcd_add_char(this, *src++)) != true)                                    return false;
+        if((retcode = operand_base_10_add_char(this, *src++)) != true)                        return false;
       }
 
       char buf[1024];
       memset(buf, 0, sizeof(buf));
-      if((retcode = bcd_to_str(this, buf, sizeof(buf))) != true)                              return false;
+      if((retcode = operand_base_10_to_str(this, buf, sizeof(buf))) != true)                  return false;
 
       DBG_PRINT("strcmp(%s, %s)\n", t->dst, buf);
       if((retcode = (strcmp(t->dst, buf) == 0)) != true) { printf("%s != %s\n", t->dst, buf); return false; }
 
-      if((retcode = bcd_delete(this)) != true)                                                return false;
-      this = (bcd *) 0;
+      if((retcode = operand_base_10_delete(this)) != true)                                    return false;
+      this = (operand_base_10 *) 0;
     }
   }
 #endif // TEST_CHAR_INPUT
   
 #ifdef TEST_MATH_OPERATIONS
   /* Math operations. */
-  typedef struct bcd_math_test {
+  typedef struct operand_base_10_math_test {
     const char  *name;
-    bool (*func)(bcd *val1, bcd *val2);
+    bool (*func)(operand_base_10 *val1, operand_base_10 *val2);
     const char  *val1;
     const char  *val2;
     const char  *result;
-  } bcd_math_test;
-  bcd_math_test math_tests[] = {
-    { "BCD_ADD_01", bcd_op_add,                "1"                 ,                "2"                 ,                     "3"                     }, // Debug
-    { "BCD_ADD_02", bcd_op_add,         "99999999"                 ,                "1"                 ,           "100,000,000"                     }, // 33-bits
-    { "BCD_ADD_03", bcd_op_add,        "999999999"                 ,                "1"                 ,         "1,000,000,000"                     }, // Carry.
-    { "BCD_ADD_04", bcd_op_add, "1234567890123456"                 , "9876543210987654"                 ,                     "1.111111110111111e+16" }, // 17 digits
-    { "BCD_ADD_05", bcd_op_add,                 ".1234567890123456", "9876543210987654"                 , "9,876,543,210,987,654"                     }, // 16.0 + 0.16 digits.
-    { "BCD_ADD_06", bcd_op_add,             "1234s"                ,             "4321"                 ,                 "3,087"                     }, // 1st num neg.
-    { "BCD_ADD_07", bcd_op_add,             "8766"                 ,             "4321"                 ,                "13,087"                     }, // Like previous, but pos.
-    { "BCD_ADD_08", bcd_op_add,              "123"                 ,             "1234"                 ,                 "1,357"                     }, // Pos + Pos.
-    { "BCD_ADD_09", bcd_op_add,              "456s"                ,              "123"                 ,                  "-333"                     }, // Neg + Pos = Neg.
-    { "BCD_ADD_10", bcd_op_add,              "456s"                ,             "1234"                 ,                   "778"                     }, // Neg + Pos = Pos.
-    { "BCD_ADD_11", bcd_op_add,              "789"                 ,             "1234s"                ,                  "-445"                     }, // Pos + Neg = Neg.
-    { "BCD_ADD_12", bcd_op_add,              "789"                 ,              "123s"                ,                   "666"                     }, // Pos + Neg = Pos.
-    { "BCD_ADD_13", bcd_op_add,              "202s"                ,             "1234s"                ,                "-1,436"                     }, // Neg + Neg.
-    { "BCD_ADD_14", bcd_op_add,             "9990s"                ,             "1234s"                ,               "-11,224"                     }, // Neg with carry.
-    { "BCD_ADD_15", bcd_op_add,               "10.5"               ,                 ".5"               ,                    "11"                     }, // decimal to whole.
-    { "BCD_ADD_16", bcd_op_add,                 ".1111111111111111",                 ".1111111111111111",                     "0.2222222222222222"    }, // No carry, no truncate.
-    { "BCD_ADD_17", bcd_op_add,             "1000"                 ,             "1000"                 ,                 "2,000"                     }, // Trailing zeroes.
-    { "BCD_ADD_18", bcd_op_add,                 ".00001"           ,                 ".00001"           ,                     "0.00002"               }, // Significant zeroes.
-    { "BCD_ADD_19", bcd_op_add,                "1.0000134s"        ,                 ".045"             ,                    "-0.9550134"             },
-    { "BCD_ADD_20", bcd_op_add, "9999999999999999"                 ,                "1"                 ,                     "1e+16"                 }, // Overflow
-    { "BCD_ADD_21", bcd_op_add,         "99999999"                 ,                "1"                 ,           "100,000,000"                     }, // Carry up to next sect.
-    { "BCD_ADD_22", bcd_op_add, "1111111111111111"                 ,                 ".9"               , "1,111,111,111,111,112"                     }, // Carry past the end.
-    { "BCD_ADD_23", bcd_op_add, "9999999999999999"                 ,                 ".9"               ,                     "1e+16"                 }, // Carry all the way up.
-    { "BCD_ADD_24", bcd_op_add, "6666666666666666"                 ,                 ".9"               , "6,666,666,666,666,667"                     }, // Carry a little bit.
-    { "BCD_ADD_25", bcd_op_add, "1111111111111111s"                ,                 ".9s"              ,"-1,111,111,111,111,112"                     }, // Negative carry.
+  } operand_base_10_math_test;
+  operand_base_10_math_test math_tests[] = {
+    { "BCD_ADD_01", operand_base_10_op_add,                "1"                 ,                "2"                 ,                     "3"                     }, // Debug
+    { "BCD_ADD_02", operand_base_10_op_add,         "99999999"                 ,                "1"                 ,           "100,000,000"                     }, // 33-bits
+    { "BCD_ADD_03", operand_base_10_op_add,        "999999999"                 ,                "1"                 ,         "1,000,000,000"                     }, // Carry.
+    { "BCD_ADD_04", operand_base_10_op_add, "1234567890123456"                 , "9876543210987654"                 ,                     "1.111111110111111e+16" }, // 17 digits
+    { "BCD_ADD_05", operand_base_10_op_add,                 ".1234567890123456", "9876543210987654"                 , "9,876,543,210,987,654"                     }, // 16.0 + 0.16 digits.
+    { "BCD_ADD_06", operand_base_10_op_add,             "1234s"                ,             "4321"                 ,                 "3,087"                     }, // 1st num neg.
+    { "BCD_ADD_07", operand_base_10_op_add,             "8766"                 ,             "4321"                 ,                "13,087"                     }, // Like previous, but pos.
+    { "BCD_ADD_08", operand_base_10_op_add,              "123"                 ,             "1234"                 ,                 "1,357"                     }, // Pos + Pos.
+    { "BCD_ADD_09", operand_base_10_op_add,              "456s"                ,              "123"                 ,                  "-333"                     }, // Neg + Pos = Neg.
+    { "BCD_ADD_10", operand_base_10_op_add,              "456s"                ,             "1234"                 ,                   "778"                     }, // Neg + Pos = Pos.
+    { "BCD_ADD_11", operand_base_10_op_add,              "789"                 ,             "1234s"                ,                  "-445"                     }, // Pos + Neg = Neg.
+    { "BCD_ADD_12", operand_base_10_op_add,              "789"                 ,              "123s"                ,                   "666"                     }, // Pos + Neg = Pos.
+    { "BCD_ADD_13", operand_base_10_op_add,              "202s"                ,             "1234s"                ,                "-1,436"                     }, // Neg + Neg.
+    { "BCD_ADD_14", operand_base_10_op_add,             "9990s"                ,             "1234s"                ,               "-11,224"                     }, // Neg with carry.
+    { "BCD_ADD_15", operand_base_10_op_add,               "10.5"               ,                 ".5"               ,                    "11"                     }, // decimal to whole.
+    { "BCD_ADD_16", operand_base_10_op_add,                 ".1111111111111111",                 ".1111111111111111",                     "0.2222222222222222"    }, // No carry, no truncate.
+    { "BCD_ADD_17", operand_base_10_op_add,             "1000"                 ,             "1000"                 ,                 "2,000"                     }, // Trailing zeroes.
+    { "BCD_ADD_18", operand_base_10_op_add,                 ".00001"           ,                 ".00001"           ,                     "0.00002"               }, // Significant zeroes.
+    { "BCD_ADD_19", operand_base_10_op_add,                "1.0000134s"        ,                 ".045"             ,                    "-0.9550134"             },
+    { "BCD_ADD_20", operand_base_10_op_add, "9999999999999999"                 ,                "1"                 ,                     "1e+16"                 }, // Overflow
+    { "BCD_ADD_21", operand_base_10_op_add,         "99999999"                 ,                "1"                 ,           "100,000,000"                     }, // Carry up to next sect.
+    { "BCD_ADD_22", operand_base_10_op_add, "1111111111111111"                 ,                 ".9"               , "1,111,111,111,111,112"                     }, // Carry past the end.
+    { "BCD_ADD_23", operand_base_10_op_add, "9999999999999999"                 ,                 ".9"               ,                     "1e+16"                 }, // Carry all the way up.
+    { "BCD_ADD_24", operand_base_10_op_add, "6666666666666666"                 ,                 ".9"               , "6,666,666,666,666,667"                     }, // Carry a little bit.
+    { "BCD_ADD_25", operand_base_10_op_add, "1111111111111111s"                ,                 ".9s"              ,"-1,111,111,111,111,112"                     }, // Negative carry.
 
-    { "BCD_SUB_01", bcd_op_sub,                "5"                 ,                "2"                 ,                     "3"                     }, // Debug.
-    { "BCD_SUB_02", bcd_op_sub,                "0"                 ,                "1"                 ,                    "-1"                     }, // Neg num.
-    { "BCD_SUB_03", bcd_op_sub,            "12345"                 ,             "1234"                 ,                "11,111"                     }, // Pos - Pos = Pos.
-    { "BCD_SUB_04", bcd_op_sub,            "54321"                 ,            "91234"                 ,               "-36,913"                     }, // Pos - Pos = Neg.
-    { "BCD_SUB_05", bcd_op_sub,            "12345"                 ,              "123.4s"              ,                "12,468.4"                   }, // Pos - Neg = Pos.
-    { "BCD_SUB_06", bcd_op_sub,              "432.1s"              ,                "7.5678"            ,                  "-439.6678"                }, // Neg - Pos = Neg.
-    { "BCD_SUB_07", bcd_op_sub,             "1225s"                ,               "34.95s"             ,                "-1,190.05"                  }, // Neg - Neg = Neg.
-    { "BCD_SUB_08", bcd_op_sub, "1111111111111111s"                , "1234567890123456s"                ,   "123,456,779,012,345"                     }, // Neg - Neg = Pos.
-    { "BCD_SUB_09", bcd_op_sub,                "3"                 ,                "0"                 ,                     "3"                     }, // Val - 0 = Val.
-    { "BCD_SUB_10", bcd_op_sub,                "0"                 ,           "452389.841"             ,              "-452,389.841"                 }, // 0 - +Val = -Val.
-    { "BCD_SUB_11", bcd_op_sub,                "0"                 ,                 ".2841s"           ,                     "0.2841"                }, // 0 - -Val = +Val.
-    { "BCD_SUB_11", bcd_op_sub,                "0"                 ,                "0"                 ,                     "0"                     }, // 0 - 0 = 0.
+    { "BCD_SUB_01", operand_base_10_op_sub,                "5"                 ,                "2"                 ,                     "3"                     }, // Debug.
+    { "BCD_SUB_02", operand_base_10_op_sub,                "0"                 ,                "1"                 ,                    "-1"                     }, // Neg num.
+    { "BCD_SUB_03", operand_base_10_op_sub,            "12345"                 ,             "1234"                 ,                "11,111"                     }, // Pos - Pos = Pos.
+    { "BCD_SUB_04", operand_base_10_op_sub,            "54321"                 ,            "91234"                 ,               "-36,913"                     }, // Pos - Pos = Neg.
+    { "BCD_SUB_05", operand_base_10_op_sub,            "12345"                 ,              "123.4s"              ,                "12,468.4"                   }, // Pos - Neg = Pos.
+    { "BCD_SUB_06", operand_base_10_op_sub,              "432.1s"              ,                "7.5678"            ,                  "-439.6678"                }, // Neg - Pos = Neg.
+    { "BCD_SUB_07", operand_base_10_op_sub,             "1225s"                ,               "34.95s"             ,                "-1,190.05"                  }, // Neg - Neg = Neg.
+    { "BCD_SUB_08", operand_base_10_op_sub, "1111111111111111s"                , "1234567890123456s"                ,   "123,456,779,012,345"                     }, // Neg - Neg = Pos.
+    { "BCD_SUB_09", operand_base_10_op_sub,                "3"                 ,                "0"                 ,                     "3"                     }, // Val - 0 = Val.
+    { "BCD_SUB_10", operand_base_10_op_sub,                "0"                 ,           "452389.841"             ,              "-452,389.841"                 }, // 0 - +Val = -Val.
+    { "BCD_SUB_11", operand_base_10_op_sub,                "0"                 ,                 ".2841s"           ,                     "0.2841"                }, // 0 - -Val = +Val.
+    { "BCD_SUB_11", operand_base_10_op_sub,                "0"                 ,                "0"                 ,                     "0"                     }, // 0 - 0 = 0.
 
-    { "BCD_MUL_01", bcd_op_mul,                "3"                 ,                "2"                 ,                     "6"                     }, // Debug.
-    { "BCD_MUL_02", bcd_op_mul,             "4567"                 ,            "56789"                 ,           "259,355,363"                     }, // Lots of carry.
-    { "BCD_MUL_03", bcd_op_mul,                "1"                 ,                "0"                 ,                     "0"                     }, // Non-0 * 0 = 0.
-    { "BCD_MUL_04", bcd_op_mul,                "0"                 ,                "8"                 ,                     "0"                     }, // 0 * Non-0 = 0.
-    { "BCD_MUL_05", bcd_op_mul,            "87878"                 ,             "4539.123"             ,       "398,889,050.994"                     }, // Pos * Pos = Pos.
-    { "BCD_MUL_06", bcd_op_mul,            "13579.2468"            ,                 ".8579s"           ,               "-11,649.63582972"            }, // Pos * Neg = Neg.
-    { "BCD_MUL_07", bcd_op_mul,                "1.0000134s"        ,                 ".045"             ,                    "-0.045000603"           }, // Neg * Pos = Neg.
-    { "BCD_MUL_08", bcd_op_mul,       "5579421358s"                ,               "42s"                ,       "234,335,697,036"                     }, // Neg * Neg = Pos.
-    { "BCD_MUL_09", bcd_op_mul,               "13.57900000"        ,             "8700.0000"            ,               "118,137.3"                   }, // Insignificant zeroes.
-    { "BCD_MUL_10", bcd_op_mul, "9999999999999999"                 ,                "9"                 ,                     "8.999999999999999e+16" }, // Very large numbers. 
-    { "BCD_MUL_11", bcd_op_mul, "9999999999999999"                 ,               "99"                 ,                     "9.899999999999999e+17" },
-    { "BCD_MUL_12", bcd_op_mul, "9999999999999999"                 ,              "999"                 ,                     "9.989999999999999e+18" },
-    { "BCD_MUL_13", bcd_op_mul, "9999999999999999"                 ,             "9999"                 ,                     "9.998999999999999e+19" },
-    { "BCD_MUL_14", bcd_op_mul, "9999999999999999"                 ,            "99999"                 ,                     "9.999899999999999e+20" },
-    { "BCD_MUL_15", bcd_op_mul, "9999999999999999"                 ,           "999999"                 ,                     "9.999989999999999e+21" },
-    { "BCD_MUL_16", bcd_op_mul, "9999999999999999"                 ,          "9999999"                 ,                     "9.999998999999999e+22" },
-    { "BCD_MUL_17", bcd_op_mul, "9999999999999999"                 ,         "99999999"                 ,                     "9.999999899999999e+23" },
-    { "BCD_MUL_18", bcd_op_mul, "9999999999999999"                 ,        "999999999"                 ,                     "9.999999989999999e+24" },
-    { "BCD_MUL_19", bcd_op_mul, "9999999999999999"                 ,       "9999999999"                 ,                     "9.999999998999999e+25" },
-    { "BCD_MUL_20", bcd_op_mul, "9999999999999999"                 ,      "99999999999"                 ,                     "9.999999999899999e+26" },
-    { "BCD_MUL_21", bcd_op_mul, "9999999999999999"                 ,     "999999999999"                 ,                     "9.999999999989999e+27" },
-    { "BCD_MUL_22", bcd_op_mul, "9999999999999999"                 ,    "9999999999999"                 ,                     "9.999999999998999e+28" },
-    { "BCD_MUL_23", bcd_op_mul, "9999999999999999"                 ,   "99999999999999"                 ,                     "9.999999999999899e+29" },
-    { "BCD_MUL_24", bcd_op_mul, "9999999999999999"                 ,  "999999999999999"                 ,                     "9.999999999999989e+30" },
-    { "BCD_MUL_25", bcd_op_mul, "9999999999999999"                 , "9999999999999999"                 ,                     "9.999999999999998e+31" },
-    { "BCD_MUL_26", bcd_op_mul,                 ".000000000000001" ,                 ".000000000000001" ,                     "1e-30"                 }, // Very small numbers.
-    { "BCD_MUL_27", bcd_op_mul,                 ".5"               ,                 ".2"               ,                     "0.1"                   }, // Insig zeroes in result.
-    { "BCD_MUL_28", bcd_op_mul,               "75"                 ,               "28.2"               ,                 "2,115"                     }, // Whole * Fract = Whole.
-    { "BCD_MUL_29", bcd_op_mul,              "428.225"             ,              "311"                 ,               "133,177.975"                 }, // Whole * Fract = Fract.
-    { "BCD_MUL_30", bcd_op_mul,            "30000"                 ,              "200"                 ,             "6,000,000"                     }, // Many trailing zeroes.
-    { "BCD_MUL_31", bcd_op_mul,                 ".009"             ,                 ".009"             ,                     "0.000081"              }, // Irrelevent carry.
-    { "BCD_MUL_32", bcd_op_mul,                "9"                 ,                "9"                 ,                    "81"                     }, // Irrelevent carry.
-    { "BCD_MUL_33", bcd_op_mul,              "370"                 ,                "3"                 ,                 "1,110"                     }, // Math test.
-    { "BCD_MUL_34", bcd_op_mul,              "370"                 ,                "6"                 ,                 "2,220"                     }, // Math test.
-    { "BCD_MUL_35", bcd_op_mul,              "370"                 ,                "9"                 ,                 "3,330"                     }, // Math test.
-    { "BCD_MUL_36", bcd_op_mul,              "370"                 ,               "12"                 ,                 "4,440"                     }, // Math test.
+    { "BCD_MUL_01", operand_base_10_op_mul,                "3"                 ,                "2"                 ,                     "6"                     }, // Debug.
+    { "BCD_MUL_02", operand_base_10_op_mul,             "4567"                 ,            "56789"                 ,           "259,355,363"                     }, // Lots of carry.
+    { "BCD_MUL_03", operand_base_10_op_mul,                "1"                 ,                "0"                 ,                     "0"                     }, // Non-0 * 0 = 0.
+    { "BCD_MUL_04", operand_base_10_op_mul,                "0"                 ,                "8"                 ,                     "0"                     }, // 0 * Non-0 = 0.
+    { "BCD_MUL_05", operand_base_10_op_mul,            "87878"                 ,             "4539.123"             ,       "398,889,050.994"                     }, // Pos * Pos = Pos.
+    { "BCD_MUL_06", operand_base_10_op_mul,            "13579.2468"            ,                 ".8579s"           ,               "-11,649.63582972"            }, // Pos * Neg = Neg.
+    { "BCD_MUL_07", operand_base_10_op_mul,                "1.0000134s"        ,                 ".045"             ,                    "-0.045000603"           }, // Neg * Pos = Neg.
+    { "BCD_MUL_08", operand_base_10_op_mul,       "5579421358s"                ,               "42s"                ,       "234,335,697,036"                     }, // Neg * Neg = Pos.
+    { "BCD_MUL_09", operand_base_10_op_mul,               "13.57900000"        ,             "8700.0000"            ,               "118,137.3"                   }, // Insignificant zeroes.
+    { "BCD_MUL_10", operand_base_10_op_mul, "9999999999999999"                 ,                "9"                 ,                     "8.999999999999999e+16" }, // Very large numbers. 
+    { "BCD_MUL_11", operand_base_10_op_mul, "9999999999999999"                 ,               "99"                 ,                     "9.899999999999999e+17" },
+    { "BCD_MUL_12", operand_base_10_op_mul, "9999999999999999"                 ,              "999"                 ,                     "9.989999999999999e+18" },
+    { "BCD_MUL_13", operand_base_10_op_mul, "9999999999999999"                 ,             "9999"                 ,                     "9.998999999999999e+19" },
+    { "BCD_MUL_14", operand_base_10_op_mul, "9999999999999999"                 ,            "99999"                 ,                     "9.999899999999999e+20" },
+    { "BCD_MUL_15", operand_base_10_op_mul, "9999999999999999"                 ,           "999999"                 ,                     "9.999989999999999e+21" },
+    { "BCD_MUL_16", operand_base_10_op_mul, "9999999999999999"                 ,          "9999999"                 ,                     "9.999998999999999e+22" },
+    { "BCD_MUL_17", operand_base_10_op_mul, "9999999999999999"                 ,         "99999999"                 ,                     "9.999999899999999e+23" },
+    { "BCD_MUL_18", operand_base_10_op_mul, "9999999999999999"                 ,        "999999999"                 ,                     "9.999999989999999e+24" },
+    { "BCD_MUL_19", operand_base_10_op_mul, "9999999999999999"                 ,       "9999999999"                 ,                     "9.999999998999999e+25" },
+    { "BCD_MUL_20", operand_base_10_op_mul, "9999999999999999"                 ,      "99999999999"                 ,                     "9.999999999899999e+26" },
+    { "BCD_MUL_21", operand_base_10_op_mul, "9999999999999999"                 ,     "999999999999"                 ,                     "9.999999999989999e+27" },
+    { "BCD_MUL_22", operand_base_10_op_mul, "9999999999999999"                 ,    "9999999999999"                 ,                     "9.999999999998999e+28" },
+    { "BCD_MUL_23", operand_base_10_op_mul, "9999999999999999"                 ,   "99999999999999"                 ,                     "9.999999999999899e+29" },
+    { "BCD_MUL_24", operand_base_10_op_mul, "9999999999999999"                 ,  "999999999999999"                 ,                     "9.999999999999989e+30" },
+    { "BCD_MUL_25", operand_base_10_op_mul, "9999999999999999"                 , "9999999999999999"                 ,                     "9.999999999999998e+31" },
+    { "BCD_MUL_26", operand_base_10_op_mul,                 ".000000000000001" ,                 ".000000000000001" ,                     "1e-30"                 }, // Very small numbers.
+    { "BCD_MUL_27", operand_base_10_op_mul,                 ".5"               ,                 ".2"               ,                     "0.1"                   }, // Insig zeroes in result.
+    { "BCD_MUL_28", operand_base_10_op_mul,               "75"                 ,               "28.2"               ,                 "2,115"                     }, // Whole * Fract = Whole.
+    { "BCD_MUL_29", operand_base_10_op_mul,              "428.225"             ,              "311"                 ,               "133,177.975"                 }, // Whole * Fract = Fract.
+    { "BCD_MUL_30", operand_base_10_op_mul,            "30000"                 ,              "200"                 ,             "6,000,000"                     }, // Many trailing zeroes.
+    { "BCD_MUL_31", operand_base_10_op_mul,                 ".009"             ,                 ".009"             ,                     "0.000081"              }, // Irrelevent carry.
+    { "BCD_MUL_32", operand_base_10_op_mul,                "9"                 ,                "9"                 ,                    "81"                     }, // Irrelevent carry.
+    { "BCD_MUL_33", operand_base_10_op_mul,              "370"                 ,                "3"                 ,                 "1,110"                     }, // Math test.
+    { "BCD_MUL_34", operand_base_10_op_mul,              "370"                 ,                "6"                 ,                 "2,220"                     }, // Math test.
+    { "BCD_MUL_35", operand_base_10_op_mul,              "370"                 ,                "9"                 ,                 "3,330"                     }, // Math test.
+    { "BCD_MUL_36", operand_base_10_op_mul,              "370"                 ,               "12"                 ,                 "4,440"                     }, // Math test.
 
-    { "BCD_DIV_01", bcd_op_div,                "6"                 ,                "2"                 ,                     "3"                     }, // Simple div.
-    { "BCD_DIV_02", bcd_op_div,              "246"                 ,                "3"                 ,                    "82"                     }, // Slightly fancier.
-    { "BCD_DIV_03", bcd_op_div, "1234567890123456"                 ,               "32"                 ,    "38,580,246,566,358"                     }, // Slightly fancier.
-    { "BCD_DIV_04", bcd_op_div,             "7890"                 ,             "3210"                 ,                     "2.457943925233645"     }, // Pos / Pos
-    { "BCD_DIV_05", bcd_op_div,             "1234"                 ,               "32s"                ,                   "-38.5625"                }, // Pos / Neg
-    { "BCD_DIV_06", bcd_op_div,            "97531s"                ,              "132"                 ,                  "-738.8712121212121"       }, // Neg / Pos
-    { "BCD_DIV_07", bcd_op_div,       "2468013579s"                ,               "32s"                ,            "77,125,424.34375"               }, // Neg / Neg
-    { "BCD_DIV_08", bcd_op_div, "9999999999999999"                 ,                 ".00234"           ,                     "4.273504273504273e+18" }, // Whole / <1
-    { "BCD_DIV_09", bcd_op_div,                 ".45832"           ,               "32s"                ,                    "-0.0143225"             }, // <1 / Whole
-    { "BCD_DIV_10", bcd_op_div, "9999999999999999"                 ,                 ".000000000000001" ,                     "9.999999999999999e+30" }, // Lrg / Sml
-    { "BCD_DIV_11", bcd_op_div,                 ".000000000000001" , "9999999999999999"                 ,                     "1e-31"                 }, // Sml / Lrg
-    { "BCD_DIV_12", bcd_op_div,       "8745963210"                 ,              "101"                 ,            "86,593,695.14851485"            }, //
-    { "BCD_DIV_13", bcd_op_div,               "22"                 ,                "7"                 ,                     "3.142857142857143"     }, // Pi-ish
-    { "BCD_DIV_14", bcd_op_div,                "2"                 ,                "1.414213562373095" ,                     "1.414213562373095"     }, // Square root of 2.
-    { "BCD_DIV_15", bcd_op_div, "9999999999999999"                 , "7777777777777777"                 ,                     "1.285714285714286"     }, // 16 / 16 = 16 digits.
-    { "BCD_DIV_16", bcd_op_div,                "3"                 , "1834944619757441"                 ,                     "1.634926726233605e-15" }, // Bug.
+    { "BCD_DIV_01", operand_base_10_op_div,                "6"                 ,                "2"                 ,                     "3"                     }, // Simple div.
+    { "BCD_DIV_02", operand_base_10_op_div,              "246"                 ,                "3"                 ,                    "82"                     }, // Slightly fancier.
+    { "BCD_DIV_03", operand_base_10_op_div, "1234567890123456"                 ,               "32"                 ,    "38,580,246,566,358"                     }, // Slightly fancier.
+    { "BCD_DIV_04", operand_base_10_op_div,             "7890"                 ,             "3210"                 ,                     "2.457943925233645"     }, // Pos / Pos
+    { "BCD_DIV_05", operand_base_10_op_div,             "1234"                 ,               "32s"                ,                   "-38.5625"                }, // Pos / Neg
+    { "BCD_DIV_06", operand_base_10_op_div,            "97531s"                ,              "132"                 ,                  "-738.8712121212121"       }, // Neg / Pos
+    { "BCD_DIV_07", operand_base_10_op_div,       "2468013579s"                ,               "32s"                ,            "77,125,424.34375"               }, // Neg / Neg
+    { "BCD_DIV_08", operand_base_10_op_div, "9999999999999999"                 ,                 ".00234"           ,                     "4.273504273504273e+18" }, // Whole / <1
+    { "BCD_DIV_09", operand_base_10_op_div,                 ".45832"           ,               "32s"                ,                    "-0.0143225"             }, // <1 / Whole
+    { "BCD_DIV_10", operand_base_10_op_div, "9999999999999999"                 ,                 ".000000000000001" ,                     "9.999999999999999e+30" }, // Lrg / Sml
+    { "BCD_DIV_11", operand_base_10_op_div,                 ".000000000000001" , "9999999999999999"                 ,                     "1e-31"                 }, // Sml / Lrg
+    { "BCD_DIV_12", operand_base_10_op_div,       "8745963210"                 ,              "101"                 ,            "86,593,695.14851485"            }, //
+    { "BCD_DIV_13", operand_base_10_op_div,               "22"                 ,                "7"                 ,                     "3.142857142857143"     }, // Pi-ish
+    { "BCD_DIV_14", operand_base_10_op_div,                "2"                 ,                "1.414213562373095" ,                     "1.414213562373095"     }, // Square root of 2.
+    { "BCD_DIV_15", operand_base_10_op_div, "9999999999999999"                 , "7777777777777777"                 ,                     "1.285714285714286"     }, // 16 / 16 = 16 digits.
+    { "BCD_DIV_16", operand_base_10_op_div,                "3"                 , "1834944619757441"                 ,                     "1.634926726233605e-15" }, // Bug.
 
-    { "BCD_EXP_01", bcd_op_exp,                "2"                 ,                "3"                 ,                     "8"                     }, // Simple.
-    { "BCD_EXP_02", bcd_op_exp,               "14"                 ,                "5s"               ,                      "1.859344320818706e-6"  }, // Negative exponent.
-    { "BCD_EXP_03", bcd_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
-    { "BCD_EXP_04", bcd_op_exp,                "3"                 ,                 ".5"               ,                     "1.732050807568877"     }, // Square root of 3.
+    { "BCD_EXP_01", operand_base_10_op_exp,                "2"                 ,                "3"                 ,                     "8"                     }, // Simple.
+    { "BCD_EXP_02", operand_base_10_op_exp,               "14"                 ,                "5s"               ,                      "1.859344320818706e-6"  }, // Negative exponent.
+    { "BCD_EXP_03", operand_base_10_op_exp,                "2"                 ,                 ".5"               ,                     "1.414213562373095"     }, // Square root of 2.
+    { "BCD_EXP_04", operand_base_10_op_exp,                "3"                 ,                 ".5"               ,                     "1.732050807568877"     }, // Square root of 3.
   };
-  size_t bcd_math_test_size = (sizeof(math_tests) / sizeof(bcd_math_test));
+  size_t operand_base_10_math_test_size = (sizeof(math_tests) / sizeof(operand_base_10_math_test));
 
   {
     int x;
-    for(x = 0; x < bcd_math_test_size; x++)
+    for(x = 0; x < operand_base_10_math_test_size; x++)
     {
-      bcd_math_test *t = &math_tests[x];
+      operand_base_10_math_test *t = &math_tests[x];
       const char *val1 = t->val1;
       const char *val2 = t->val2;
       printf("  %s: %s %s\n", t->name, val1, val2);
 
-      bcd *obj1 = bcd_new();
-      if((retcode = (obj1 != (bcd *) 0)) != true)                                             return false;
+      operand_base_10 *obj1 = operand_base_10_new();
+      if((retcode = (obj1 != (operand_base_10 *) 0)) != true)                                 return false;
       while(*val1)
       {
-        if((retcode = bcd_add_char(obj1, *val1++)) != true)                                   return false;
+        if((retcode = operand_base_10_add_char(obj1, *val1++)) != true)                       return false;
       }
 
-      bcd *obj2 = bcd_new();
-      if((retcode = (obj2 != (bcd *) 0)) != true)                                             return false;
+      operand_base_10 *obj2 = operand_base_10_new();
+      if((retcode = (obj2 != (operand_base_10 *) 0)) != true)                                 return false;
       while(*val2)
       {
-        if((retcode = bcd_add_char(obj2, *val2++)) != true)                                   return false;
+        if((retcode = operand_base_10_add_char(obj2, *val2++)) != true)                       return false;
       }
 
       if((retcode = t->func(obj1, obj2)) != true)                                             return false;
     
       char buf[1024];
       memset(buf, 0, sizeof(buf));
-      if((retcode = bcd_to_str(obj1, buf, sizeof(buf))) != true)                              return false;
+      if((retcode = operand_base_10_to_str(obj1, buf, sizeof(buf))) != true)                  return false;
 
       if((retcode = (strcmp(t->result, buf) == 0)) != true)
       {
@@ -2563,8 +2565,8 @@ bcd_test(void)
         return false;
       }
 
-      if((retcode = bcd_delete(obj1)) != true)                                                return false;
-      if((retcode = bcd_delete(obj2)) != true)                                                return false;
+      if((retcode = operand_base_10_delete(obj1)) != true)                                    return false;
+      if((retcode = operand_base_10_delete(obj2)) != true)                                    return false;
     }
   }
 #endif // TEST_MATH_OPERATIONS
@@ -2576,13 +2578,13 @@ bcd_test(void)
     char buf[1024];
 
     printf("Divide by zero test.\n");
-    bcd *o1 = bcd_new(), *o2 = bcd_new();
+    operand_base_10 *o1 = operand_base_10_new(), *o2 = operand_base_10_new();
     if(bcd_sig_initialize(&o1->significand) != true)                                          return false;
     if(bcd_sig_initialize(&o2->significand) != true)                                          return false;
     if(bcd_sig_set_digit(&o1->significand, 0, 1) != true)                                     return false;
     o1->exponent = 1; o1->got_decimal_point = 0; o1->sign = false;
     o2->exponent = 1; o2->got_decimal_point = 0; o2->sign = false;
-    if(bcd_op_div(o1, o2) != false)                                                           return false;
+    if(operand_base_10_op_div(o1, o2) != false)                                               return false;
 
     printf("Mul very large and very small numbers.\n");
     int x;
@@ -2593,54 +2595,54 @@ bcd_test(void)
     if(bcd_sig_set_digit(&o2->significand, 0, 1) != true)                                     return false;
     o1->exponent = 15; o1->got_decimal_point = 0; o1->sign = false;
     o2->exponent =  2; o2->got_decimal_point = 0; o2->sign = false;
-    if(bcd_op_mul(o1, o2) != true)                                                            return false;
+    if(operand_base_10_op_mul(o1, o2) != true)                                                return false;
     memset(buf, 0, sizeof(buf));
-    if((retcode = bcd_to_str(o1, buf, sizeof(buf))) != true)                                  return false;
+    if((retcode = operand_base_10_to_str(o1, buf, sizeof(buf))) != true)                      return false;
     if((retcode = (strcmp("9.999999999999999e+17", buf) == 0)) != true)                       return false;
 
     printf("Now add a very small number.\n");
     if(bcd_sig_set_digit(&o2->significand, 0, 1) != true)                                     return false;
     o2->exponent =  1; o2->got_decimal_point = 0; o2->sign = false;
-    if(bcd_op_add(o1, o2) != true)                                                            return false;
+    if(operand_base_10_op_add(o1, o2) != true)                                                return false;
     memset(buf, 0, sizeof(buf));
-    if((retcode = bcd_to_str(o1, buf, sizeof(buf))) != true)                                  return false;
+    if((retcode = operand_base_10_to_str(o1, buf, sizeof(buf))) != true)                      return false;
     if((retcode = (strcmp("9.999999999999999e+17", buf) == 0)) != true)                       return false;
 
-    printf("bcd_copy() and bcd_cmp().\n");
+    printf("operand_base_10_copy() and operand_base_10_cmp().\n");
     if(bcd_sig_initialize(&o1->significand) != true)                                          return false;
     if(bcd_sig_set_digit(&o1->significand, 0, 1) != true)                                     return false;
     o1->exponent =  0; o1->got_decimal_point = 0; o1->sign = false;
     if(bcd_sig_initialize(&o2->significand) != true)                                          return false;
     if(bcd_sig_set_digit(&o2->significand, 0, 1) != true)                                     return false;
     o2->exponent =  0; o2->got_decimal_point = 0; o2->sign = false;
-    if(bcd_cmp(o1, o2) != 0)                                                                  return false;
+    if(operand_base_10_cmp(o1, o2) != 0)                                                      return false;
     o1->sign = true;
-    if(bcd_cmp(o1, o2) != -1)                                                                 return false;
+    if(operand_base_10_cmp(o1, o2) != -1)                                                     return false;
     o2->sign = true;
-    if(bcd_cmp(o1, o2) !=  0)                                                                 return false;
+    if(operand_base_10_cmp(o1, o2) !=  0)                                                     return false;
     o1->sign = false;
-    if(bcd_cmp(o1, o2) !=  1)                                                                 return false;
+    if(operand_base_10_cmp(o1, o2) !=  1)                                                     return false;
     for(x = 0; x < (BCD_NUM_DIGITS - 1); x++)
     {
       if(bcd_sig_set_digit(&o1->significand, x, 9) != true)                                   return false;
     }
     o1->exponent = 0; o1->sign = false;
-    if(bcd_copy(o1, o2) != true)                                                              return false;
-    if(bcd_cmp(o1, o2) !=  0)                                                                 return false;
+    if(operand_base_10_copy(o1, o2) != true)                                                  return false;
+    if(operand_base_10_cmp(o1, o2) !=  0)                                                     return false;
 
-    printf("bcd_import() and bcd_export().\n");
+    printf("operand_base_10_import() and operand_base_10_export().\n");
     int64_t exp;
-    if(bcd_import(o1, 1000) != true)                                                          return false;
-    if(bcd_export(o1, &exp) != true)                                                          return false;
+    if(operand_base_10_import(o1, 1000) != true)                                              return false;
+    if(operand_base_10_export(o1, &exp) != true)                                              return false;
     if(exp != 1000)                                                                           return false;
-    if(bcd_import(o1, 0) != true)                                                             return false;
-    if(bcd_add_char(o1, '5') != true)                                                         return false;
-    if(bcd_add_char(o1, '0') != true)                                                         return false;
-    if(bcd_add_char(o1, '0') != true)                                                         return false;
-    if(bcd_export(o1, &exp) != true)                                                          return false;
+    if(operand_base_10_import(o1, 0) != true)                                                 return false;
+    if(operand_base_10_add_char(o1, '5') != true)                                             return false;
+    if(operand_base_10_add_char(o1, '0') != true)                                             return false;
+    if(operand_base_10_add_char(o1, '0') != true)                                             return false;
+    if(operand_base_10_export(o1, &exp) != true)                                              return false;
     if(exp != 500)                                                                            return false;
 
-    bcd_delete(o1); bcd_delete(o2);
+    operand_base_10_delete(o1); operand_base_10_delete(o2);
   }
 #endif // TEST_SPECIAL
 

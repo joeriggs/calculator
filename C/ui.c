@@ -100,14 +100,14 @@ ui_display_calc(calculator *calc)
   /* Get the hex/dec setting. */
   char   base_str[8];
   size_t base_str_max = (sizeof(base_str) - 1);
-  operand_base base;
-  if(calculator_get_operand_base(calc, &base) == true)
+  operand_type base;
+  if(calculator_get_operand_type(calc, &base) == true)
   {
     switch(base)
     {
-    case operand_base_10: strncpy(base_str, "dec", base_str_max); break;
-    case operand_base_16: strncpy(base_str, "hex", base_str_max); break;
-    default:                 strncpy(base_str, "!!!", base_str_max); break;
+    case operand_type_base_10: strncpy(base_str, "dec", base_str_max); break;
+    case operand_type_base_16: strncpy(base_str, "hex", base_str_max); break;
+    default:                   strncpy(base_str, "!!!", base_str_max); break;
     }
   }
   else
@@ -150,17 +150,17 @@ bool ui(void)
 
         case 'm':
           {
-            operand_base cur_base;
-            if(calculator_get_operand_base(calc, &cur_base) == true)
+            operand_type cur_base;
+            if(calculator_get_operand_type(calc, &cur_base) == true)
             {
-              operand_base new_base;
+              operand_type new_base;
               switch(cur_base)
               {
-              case operand_base_10: new_base = operand_base_16; break;
-              case operand_base_16: new_base = operand_base_10; break;
-              default:              new_base = operand_base_10; break;
+              case operand_type_base_10: new_base = operand_type_base_16; break;
+              case operand_type_base_16: new_base = operand_type_base_10; break;
+              default:                   new_base = operand_type_base_10; break;
               }
-              calculator_set_operand_base(calc, new_base);
+              calculator_set_operand_type(calc, new_base);
             }
           }
           break;
